@@ -5,8 +5,7 @@ import { Check, Edit, Trash2, Eye } from "lucide-react";
 
 interface WorkingHour {
   id: string;
-  status: string;
-  // Add other properties as needed
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
 }
 
 interface WorkingHoursActionsProps {

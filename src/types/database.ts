@@ -51,7 +51,7 @@ export interface WorkingHour {
   start_time: string;
   end_time: string;
   total_hours: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
   roster_id?: string;
   created_at: string;
   updated_at: string;
