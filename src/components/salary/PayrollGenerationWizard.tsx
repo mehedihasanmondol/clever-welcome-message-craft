@@ -22,7 +22,7 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
-  const [statusFilter, setStatusFilter] = useState<string>('approved');
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'paid'>('approved');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedBankAccount, setSelectedBankAccount] = useState("");
   const [loading, setLoading] = useState(false);
@@ -84,7 +84,7 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
       // Type assertion to handle the nested profile data structure
       const typedWorkingHours = (workingHoursData || []).map(wh => ({
         ...wh,
-        status: wh.status as 'pending' | 'approved' | 'rejected'
+        status: wh.status as 'pending' | 'approved' | 'rejected' | 'paid'
       })) as WorkingHour[];
 
       setFilteredWorkingHours(typedWorkingHours);
@@ -400,13 +400,14 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
 
                     <div>
                       <Label>Working Hours Status</Label>
-                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <Select value={statusFilter} onValueChange={(value: 'pending' | 'approved' | 'rejected' | 'paid') => setStatusFilter(value)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="approved">Approved Only</SelectItem>
                           <SelectItem value="pending">Pending Only</SelectItem>
+                          <SelectItem value="paid">Paid Only</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
