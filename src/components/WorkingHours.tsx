@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProfileSelector } from "@/components/common/ProfileSelector";
 import { EditWorkingHoursDialog } from "@/components/EditWorkingHoursDialog";
 
-export const WorkingHours = () => {
+export const WorkingHoursComponent = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -37,7 +37,7 @@ export const WorkingHours = () => {
     sign_out_time: "",
     hourly_rate: 0,
     notes: "",
-    status: "pending" as const
+    status: "pending"
   });
 
   useEffect(() => {
@@ -189,7 +189,7 @@ export const WorkingHours = () => {
         sign_out_time: "",
         hourly_rate: 0,
         notes: "",
-        status: "pending" as const
+        status: "pending"
       });
       fetchWorkingHours();
     } catch (error) {
@@ -204,7 +204,7 @@ export const WorkingHours = () => {
     }
   };
 
-  const updateStatus = async (id: string, status: 'approved' | 'rejected' | 'paid') => {
+  const updateStatus = async (id: string, status: 'approved' | 'rejected') => {
     try {
       const { error } = await supabase
         .from('working_hours')
@@ -541,11 +541,7 @@ export const WorkingHours = () => {
                     <td className="py-3 px-4">
                       <Badge variant={
                         wh.status === "approved" ? "default" : 
-                        wh.status === "pending" ? "secondary" : 
-                        wh.status === "paid" ? "default" :
-                        "outline"
-                      } className={
-                        wh.status === "paid" ? "bg-green-600 hover:bg-green-700" : ""
+                        wh.status === "pending" ? "secondary" : "outline"
                       }>
                         {wh.status}
                       </Badge>
