@@ -9,14 +9,16 @@ import { Plus, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Client } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
-import { ClientDataTable } from "@/components/tables/ClientDataTable";
+import { ServerSideClientDataTable } from "@/components/tables/ServerSideClientDataTable";
 
 export const ClientManagement = () => {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [clientStats, setClientStats] = useState({
+    totalClients: 0,
+    activeClients: 0,
+    totalProjects: 0
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [projectCounts, setProjectCounts] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -28,53 +30,46 @@ export const ClientManagement = () => {
   });
 
   useEffect(() => {
-    fetchClients();
-    fetchProjectCounts();
+    fetchClientStats();
   }, []);
 
-  const fetchClients = async () => {
+  const fetchClientStats = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch client counts
+      const { data: clientData, error: clientError } = await supabase
         .from('clients')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' });
 
-      if (error) throw error;
-      // Type cast the data to ensure proper typing
-      setClients((data || []) as Client[]);
+      if (clientError) throw clientError;
+
+      // Fetch project counts
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact' });
+
+      if (projectError) throw projectError;
+
+      const totalClients = clientData?.length || 0;
+      const activeClients = clientData?.filter((c: Client) => c.status === 'active').length || 0;
+      const totalProjects = projectData?.length || 0;
+
+      setClientStats({
+        totalClients,
+        activeClients,
+        totalProjects
+      });
     } catch (error) {
-      console.error('Error fetching clients:', error);
+      console.error('Error fetching client stats:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch clients",
+        description: "Failed to fetch client statistics",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProjectCounts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('client_id');
-
-      if (error) throw error;
-      
-      const counts: Record<string, number> = {};
-      data?.forEach(project => {
-        counts[project.client_id] = (counts[project.client_id] || 0) + 1;
-      });
-      setProjectCounts(counts);
-    } catch (error) {
-      console.error('Error fetching project counts:', error);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
       if (editingClient) {
@@ -97,7 +92,7 @@ export const ClientManagement = () => {
       setIsDialogOpen(false);
       setEditingClient(null);
       setFormData({ name: "", email: "", phone: "", company: "", status: "active" });
-      fetchClients();
+      fetchClientStats(); // Refresh stats after changes
     } catch (error) {
       console.error('Error saving client:', error);
       toast({
@@ -105,8 +100,6 @@ export const ClientManagement = () => {
         description: "Failed to save client",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -133,8 +126,7 @@ export const ClientManagement = () => {
 
       if (error) throw error;
       toast({ title: "Success", description: "Client deleted successfully" });
-      fetchClients();
-      fetchProjectCounts();
+      fetchClientStats(); // Refresh stats after deletion
     } catch (error) {
       console.error('Error deleting client:', error);
       toast({
@@ -144,12 +136,6 @@ export const ClientManagement = () => {
       });
     }
   };
-
-  const totalProjects = Object.values(projectCounts).reduce((sum, count) => sum + count, 0);
-
-  if (loading && clients.length === 0) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
-  }
 
   return (
     <div className="space-y-6">
@@ -218,8 +204,8 @@ export const ClientManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : editingClient ? "Update Client" : "Add Client"}
+              <Button type="submit">
+                {editingClient ? "Update Client" : "Add Client"}
               </Button>
             </form>
           </DialogContent>
@@ -233,7 +219,7 @@ export const ClientManagement = () => {
             <Building2 className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{clients.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{clientStats.totalClients}</div>
           </CardContent>
         </Card>
 
@@ -244,7 +230,7 @@ export const ClientManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {clients.filter(c => c.status === "active").length}
+              {clientStats.activeClients}
             </div>
           </CardContent>
         </Card>
@@ -255,16 +241,14 @@ export const ClientManagement = () => {
             <Building2 className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{totalProjects}</div>
+            <div className="text-2xl font-bold text-gray-900">{clientStats.totalProjects}</div>
           </CardContent>
         </Card>
       </div>
 
-      <ClientDataTable
-        clients={clients}
+      <ServerSideClientDataTable
         onEdit={handleEdit}
         onDelete={handleDelete}
-        loading={loading}
       />
     </div>
   );
