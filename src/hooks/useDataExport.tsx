@@ -1,13 +1,7 @@
 import { useCallback } from 'react';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => void;
-  }
-}
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export interface ExportData {
   headers: string[];
@@ -44,7 +38,7 @@ export function useDataExport() {
       doc.text(title, 20, 20);
     }
 
-    doc.autoTable({
+    autoTable(doc, {
       head: [data.headers],
       body: data.data,
       startY: title ? 30 : 20,

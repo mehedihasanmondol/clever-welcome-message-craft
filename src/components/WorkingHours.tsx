@@ -7,15 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Clock, CheckCircle, XCircle, DollarSign, Timer, Edit } from "lucide-react";
+import { Plus, Clock, DollarSign, Timer, Search, Edit, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkingHour, Profile, Client, Project, WorkingHoursStatus } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileSelector } from "@/components/common/ProfileSelector";
 import { EditWorkingHoursDialog } from "@/components/EditWorkingHoursDialog";
+import { WorkingHoursDataTable } from "@/components/tables/WorkingHoursDataTable";
 
 export const WorkingHoursComponent = () => {
-  const [searchTerm, setSearchTerm] = useState("");
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -233,10 +233,6 @@ export const WorkingHoursComponent = () => {
     setIsEditDialogOpen(true);
   };
 
-  const filteredWorkingHours = workingHours.filter(wh =>
-    (wh.profiles?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (wh.projects?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (loading && workingHours.length === 0) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -416,7 +412,7 @@ export const WorkingHoursComponent = () => {
             <Clock className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{filteredWorkingHours.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{workingHours.length}</div>
             <p className="text-xs text-muted-foreground">All logged hours</p>
           </CardContent>
         </Card>
@@ -428,7 +424,7 @@ export const WorkingHoursComponent = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {filteredWorkingHours.reduce((sum, wh) => sum + (wh.actual_hours || wh.total_hours), 0).toFixed(1)}
+              {workingHours.reduce((sum, wh) => sum + (wh.actual_hours || wh.total_hours), 0).toFixed(1)}
             </div>
             <p className="text-xs text-muted-foreground">Actual hours worked</p>
           </CardContent>
@@ -441,7 +437,7 @@ export const WorkingHoursComponent = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {filteredWorkingHours.reduce((sum, wh) => sum + (wh.overtime_hours || 0), 0).toFixed(1)}
+              {workingHours.reduce((sum, wh) => sum + (wh.overtime_hours || 0), 0).toFixed(1)}
             </div>
             <p className="text-xs text-muted-foreground">Extra hours worked</p>
           </CardContent>
@@ -454,138 +450,20 @@ export const WorkingHoursComponent = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              ${filteredWorkingHours.reduce((sum, wh) => sum + (wh.payable_amount || 0), 0).toFixed(2)}
+              ${workingHours.reduce((sum, wh) => sum + (wh.payable_amount || 0), 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">Total amount due</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Enhanced Working Hours Log ({filteredWorkingHours.length})</CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search by name or project..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Profile</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Project</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Date</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Scheduled</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Actual</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Overtime</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Payable</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredWorkingHours.map((wh) => (
-                  <tr key={wh.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div>
-                        <div className="font-medium text-gray-900">{wh.profiles?.full_name || 'N/A'}</div>
-                        <div className="text-sm text-gray-600">{wh.profiles?.role || 'N/A'}</div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div>
-                        <div className="font-medium text-gray-900">{wh.projects?.name || 'N/A'}</div>
-                        <div className="text-sm text-gray-600">{wh.clients?.company || 'N/A'}</div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      {new Date(wh.date).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      <div className="text-sm">
-                        {wh.start_time} - {wh.end_time}
-                        <div className="text-xs text-gray-500">{wh.total_hours}h</div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      <div className="text-sm">
-                        {wh.sign_in_time && wh.sign_out_time ? (
-                          <>
-                            {wh.sign_in_time} - {wh.sign_out_time}
-                            <div className="text-xs text-gray-500">{wh.actual_hours || 0}h</div>
-                          </>
-                        ) : (
-                          <span className="text-gray-400">Not recorded</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className={`text-sm font-medium ${(wh.overtime_hours || 0) > 0 ? 'text-orange-600' : 'text-gray-600'}`}>
-                        {(wh.overtime_hours || 0).toFixed(1)}h
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="text-sm font-medium text-purple-600">
-                        ${(wh.payable_amount || 0).toFixed(2)}
-                        <div className="text-xs text-gray-500">${wh.hourly_rate || 0}/hr</div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge variant={
-                        wh.status === "approved" ? "default" : 
-                        wh.status === "pending" ? "secondary" : "outline"
-                      }>
-                        {wh.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleEdit(wh)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {wh.status === "pending" && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => updateStatus(wh.id, "approved")}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => updateStatus(wh.id, "rejected")}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <WorkingHoursDataTable
+        workingHours={workingHours}
+        onEdit={handleEdit}
+        onApprove={(id) => updateStatus(id, "approved")}
+        onReject={(id) => updateStatus(id, "rejected")}
+        loading={loading}
+      />
 
       <EditWorkingHoursDialog
         workingHour={editingWorkingHour}

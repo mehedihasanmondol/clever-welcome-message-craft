@@ -1,19 +1,18 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Edit, Trash2, FolderOpen } from "lucide-react";
+import { Plus, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, Client } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
+import { ProjectDataTable } from "@/components/tables/ProjectDataTable";
 
 export const ProjectManagement = () => {
-  const [searchTerm, setSearchTerm] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,24 +159,6 @@ export const ProjectManagement = () => {
     }
   };
 
-  const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.clients?.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "default";
-      case "completed":
-        return "secondary";
-      case "on-hold":
-        return "destructive";
-      default:
-        return "secondary";
-    }
-  };
 
   if (loading && projects.length === 0) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -336,65 +317,12 @@ export const ProjectManagement = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Projects</CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search projects..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Project Name</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Client</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Description</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Start Date</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Budget</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProjects.map((project) => (
-                  <tr key={project.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium text-gray-900">{project.name}</td>
-                    <td className="py-3 px-4 text-gray-600">{project.clients?.company}</td>
-                    <td className="py-3 px-4 text-gray-600">{project.description || '-'}</td>
-                    <td className="py-3 px-4 text-gray-600">{project.start_date}</td>
-                    <td className="py-3 px-4 text-gray-600">${project.budget.toLocaleString()}</td>
-                    <td className="py-3 px-4">
-                      <Badge variant={getStatusColor(project.status)}>
-                        {project.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(project)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(project.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <ProjectDataTable
+        projects={projects}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        loading={loading}
+      />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Payroll as PayrollType, Profile, WorkingHour } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileSelector } from "@/components/common/ProfileSelector";
+import { PayrollDataTable } from "@/components/tables/PayrollDataTable";
 
 export const PayrollComponent = () => {
   const [payrolls, setPayrolls] = useState<PayrollType[]>([]);
@@ -561,53 +562,39 @@ export const PayrollComponent = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Payroll Records</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Employee</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Period</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Hours</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Rate</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Gross</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Net</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payrolls.map((payroll) => (
-                  <tr key={payroll.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{payroll.profiles?.full_name || 'Unknown'}</div>
-                      <div className="text-sm text-gray-600">{payroll.profiles?.role || 'N/A'}</div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      {new Date(payroll.pay_period_start).toLocaleDateString()} - {new Date(payroll.pay_period_end).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">{payroll.total_hours}h</td>
-                    <td className="py-3 px-4 text-gray-600">${payroll.hourly_rate}/hr</td>
-                    <td className="py-3 px-4 text-gray-600">${payroll.gross_pay.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-gray-600">${payroll.net_pay.toLocaleString()}</td>
-                    <td className="py-3 px-4">
-                      <Badge variant={
-                        payroll.status === "paid" ? "default" : 
-                        payroll.status === "approved" ? "secondary" : "outline"
-                      }>
-                        {payroll.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <PayrollDataTable
+        payrolls={payrolls}
+        onEdit={(payroll) => {
+          // Implement edit functionality if needed
+          console.log('Edit payroll:', payroll);
+        }}
+        onDelete={async (id) => {
+          if (!confirm("Are you sure you want to delete this payroll record?")) return;
+          
+          try {
+            const { error } = await supabase
+              .from('payroll')
+              .delete()
+              .eq('id', id);
+
+            if (error) throw error;
+            toast({ title: "Success", description: "Payroll record deleted successfully" });
+            fetchPayrolls();
+          } catch (error) {
+            console.error('Error deleting payroll:', error);
+            toast({
+              title: "Error",
+              description: "Failed to delete payroll record",
+              variant: "destructive"
+            });
+          }
+        }}
+        onView={(payroll) => {
+          // Implement view functionality if needed
+          console.log('View payroll:', payroll);
+        }}
+        loading={loading}
+      />
     </div>
   );
 };
