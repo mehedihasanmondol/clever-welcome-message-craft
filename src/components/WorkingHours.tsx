@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Clock, CheckCircle, XCircle, DollarSign, Timer, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { WorkingHour, Profile, Client, Project } from "@/types/database";
+import { WorkingHour, Profile, Client, Project, WorkingHoursStatus } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileSelector } from "@/components/common/ProfileSelector";
 import { EditWorkingHoursDialog } from "@/components/EditWorkingHoursDialog";
@@ -166,6 +166,7 @@ export const WorkingHoursComponent = () => {
         .from('working_hours')
         .insert([{
           ...formData,
+          status: formData.status as WorkingHoursStatus,
           total_hours: totalHours,
           actual_hours: actualHours || null,
           overtime_hours: overtimeHours,

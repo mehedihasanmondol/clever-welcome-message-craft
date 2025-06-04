@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Calendar, Clock, Users, DollarSign, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Roster as RosterType, Profile, Client, Project, RosterProfile } from "@/types/database";
+import { Roster as RosterType, Profile, Client, Project, RosterProfile, RosterStatus } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { MultipleProfileSelector } from "@/components/common/MultipleProfileSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -194,7 +194,7 @@ export const RosterComponent = () => {
           end_time: formData.end_time,
           total_hours: totalHours,
           notes: formData.notes,
-          status: formData.status,
+          status: formData.status as RosterStatus,
           name: finalName,
           expected_profiles: formData.expected_profiles,
           per_hour_rate: formData.per_hour_rate
