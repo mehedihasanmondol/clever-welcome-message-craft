@@ -2,9 +2,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Briefcase, Clock, DollarSign, Building, FileText, TrendingUp, Calendar, Bell, BarChart3, Banknote, UserCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Users, Briefcase, Clock, DollarSign, Building, FileText, TrendingUp, Calendar, Bell, BarChart3, Banknote, UserCheck, Filter, CalendarRange } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, ComposedChart } from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -25,15 +29,29 @@ export const Dashboard = () => {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('current_week');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [useCustomRange, setUseCustomRange] = useState(false);
   const [chartData, setChartData] = useState<any[]>([]);
   const [projectData, setProjectData] = useState<any[]>([]);
   const [hoursData, setHoursData] = useState<any[]>([]);
+  const [employeeData, setEmployeeData] = useState<any[]>([]);
+  const [payrollData, setPayrollData] = useState<any[]>([]);
+  const [clientData, setClientData] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [dateRange]);
+  }, [dateRange, customStartDate, customEndDate, useCustomRange]);
 
   const getDateRange = () => {
+    if (useCustomRange && customStartDate && customEndDate) {
+      return {
+        startDate: new Date(customStartDate),
+        endDate: new Date(customEndDate)
+      };
+    }
+
     const now = new Date();
     let startDate: Date;
     let endDate: Date = new Date();
@@ -61,12 +79,44 @@ export const Dashboard = () => {
         startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         endDate = new Date(now.getFullYear(), now.getMonth(), 0);
         break;
+      // Month-specific options
+      case 'january':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 1, 0);
+        break;
+      case 'february':
+        startDate = new Date(now.getFullYear(), 1, 1);
+        endDate = new Date(now.getFullYear(), 2, 0);
+        break;
+      case 'march':
+        startDate = new Date(now.getFullYear(), 2, 1);
+        endDate = new Date(now.getFullYear(), 3, 0);
+        break;
+      case 'april':
+        startDate = new Date(now.getFullYear(), 3, 1);
+        endDate = new Date(now.getFullYear(), 4, 0);
+        break;
+      case 'may':
+        startDate = new Date(now.getFullYear(), 4, 1);
+        endDate = new Date(now.getFullYear(), 5, 0);
+        break;
+      case 'june':
+        startDate = new Date(now.getFullYear(), 5, 1);
+        endDate = new Date(now.getFullYear(), 6, 0);
+        break;
       default:
         startDate = new Date(now.setDate(now.getDate() - now.getDay()));
         endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
     }
 
     return { startDate, endDate };
+  };
+
+  const handleCustomDateRange = () => {
+    if (customStartDate && customEndDate) {
+      setUseCustomRange(true);
+      fetchDashboardData();
+    }
   };
 
   const fetchDashboardData = async () => {
@@ -219,6 +269,59 @@ export const Dashboard = () => {
         return acc;
       }, []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+      // Prepare employee performance data
+      const employeePerformanceData = (workingHours || []).reduce((acc: any[], wh) => {
+        const employeeName = wh.profiles?.full_name || 'Unknown';
+        const existing = acc.find(item => item.name === employeeName);
+        if (existing) {
+          existing.hours += wh.total_hours;
+          existing.amount += wh.payable_amount || 0;
+        } else {
+          acc.push({ 
+            name: employeeName, 
+            hours: wh.total_hours, 
+            amount: wh.payable_amount || 0 
+          });
+        }
+        return acc;
+      }, []);
+
+      // Prepare client revenue data
+      const clientRevenueData = (transactions || []).reduce((acc: any[], t) => {
+        const category = t.category || 'General';
+        const existing = acc.find(item => item.category === category);
+        if (existing) {
+          existing.amount += t.amount;
+        } else {
+          acc.push({ category, amount: t.amount });
+        }
+        return acc;
+      }, []);
+
+      // Prepare monthly comparison data
+      const monthlyComparisonData = [];
+      for (let i = 5; i >= 0; i--) {
+        const month = new Date();
+        month.setMonth(month.getMonth() - i);
+        const monthName = month.toLocaleDateString('en-US', { month: 'short' });
+        
+        const monthHours = (workingHours || []).filter(wh => {
+          const whDate = new Date(wh.date);
+          return whDate.getMonth() === month.getMonth() && whDate.getFullYear() === month.getFullYear();
+        }).reduce((sum, wh) => sum + wh.total_hours, 0);
+        
+        const monthRevenue = (transactions || []).filter(t => {
+          const tDate = new Date(t.date);
+          return tDate.getMonth() === month.getMonth() && tDate.getFullYear() === month.getFullYear();
+        }).reduce((sum, t) => sum + t.amount, 0);
+
+        monthlyComparisonData.push({
+          month: monthName,
+          hours: monthHours,
+          revenue: monthRevenue
+        });
+      }
+
       // Format recent activities with safe data handling
       const activities = (recentHours || []).map(wh => {
         const profileName = wh.profiles?.full_name || 'Unknown User';
@@ -251,6 +354,10 @@ export const Dashboard = () => {
       setChartData(revenueChartData);
       setProjectData(projectChartData);
       setHoursData(hoursChartData);
+      setEmployeeData(employeePerformanceData);
+      setPayrollData(payrollData);
+      setClientData(clientRevenueData);
+      setMonthlyData(monthlyComparisonData);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -342,26 +449,83 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome to your business management overview</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600">Comprehensive business management overview</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="current_week">Current Week</SelectItem>
-              <SelectItem value="last_week">Last Week</SelectItem>
-              <SelectItem value="current_month">Current Month</SelectItem>
-              <SelectItem value="last_month">Last Month</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        
+        {/* Enhanced Date Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Date Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Quick Date Range */}
+              <div className="space-y-2">
+                <Label>Quick Date Range</Label>
+                <Select value={dateRange} onValueChange={(value) => { setDateRange(value); setUseCustomRange(false); }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="current_week">Current Week</SelectItem>
+                    <SelectItem value="last_week">Last Week</SelectItem>
+                    <SelectItem value="current_month">Current Month</SelectItem>
+                    <SelectItem value="last_month">Last Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Month Selection */}
+              <div className="space-y-2">
+                <Label>Select Month (2024)</Label>
+                <Select value={dateRange} onValueChange={(value) => { setDateRange(value); setUseCustomRange(false); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="january">January</SelectItem>
+                    <SelectItem value="february">February</SelectItem>
+                    <SelectItem value="march">March</SelectItem>
+                    <SelectItem value="april">April</SelectItem>
+                    <SelectItem value="may">May</SelectItem>
+                    <SelectItem value="june">June</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Custom Date Range */}
+              <div className="space-y-2">
+                <Label>Custom Date Range</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    placeholder="Start Date"
+                  />
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    placeholder="End Date"
+                  />
+                  <Button onClick={handleCustomDateRange} size="sm">
+                    <CalendarRange className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -490,6 +654,168 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Additional Comprehensive Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Employee Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={employeeData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Legend />
+                <Bar yAxisId="left" dataKey="hours" fill="#8884d8" name="Hours" />
+                <Line yAxisId="right" type="monotone" dataKey="amount" stroke="#ff7300" name="Amount ($)" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Monthly Comparison
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Legend />
+                <Area yAxisId="left" type="monotone" dataKey="hours" fill="#8884d8" stroke="#8884d8" fillOpacity={0.6} name="Hours" />
+                <Bar yAxisId="right" dataKey="revenue" fill="#82ca9d" name="Revenue ($)" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Revenue by Category
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={clientData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ category, value }) => `${category}: $${value.toLocaleString()}`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="amount"
+                >
+                  {clientData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Payroll Summary Table
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-auto max-h-[300px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Gross Pay</TableHead>
+                    <TableHead>Net Pay</TableHead>
+                    <TableHead>Period</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payrollData.slice(0, 10).map((payroll: any, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          payroll.status === 'paid' ? 'bg-green-100 text-green-800' :
+                          payroll.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {payroll.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>${payroll.gross_pay?.toLocaleString()}</TableCell>
+                      <TableCell>${payroll.net_pay?.toLocaleString()}</TableCell>
+                      <TableCell>{payroll.pay_period_start} to {payroll.pay_period_end}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {payrollData.length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">No payroll data available</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Employee Performance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Detailed Employee Performance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Total Hours</TableHead>
+                  <TableHead>Total Amount</TableHead>
+                  <TableHead>Average Hourly Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {employeeData.map((employee: any, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{employee.name}</TableCell>
+                    <TableCell>{employee.hours.toFixed(1)}h</TableCell>
+                    <TableCell>${employee.amount.toLocaleString()}</TableCell>
+                    <TableCell>${employee.hours > 0 ? (employee.amount / employee.hours).toFixed(2) : '0.00'}/hr</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {employeeData.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No employee data available for selected period</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
