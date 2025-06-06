@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Printer, Download, Eye, Calendar, DollarSign, Trash2, CreditCard, Check } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FileText, Printer, Download, Eye, Calendar, DollarSign, Trash2, CreditCard, Check, Edit, Search, Filter } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { Payroll, Profile, BankAccount } from "@/types/database";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SalarySheetPrintView } from "./SalarySheetPrintView";
 import { ActionDropdown } from "@/components/ui/action-dropdown";
 import { PayrollDetailsDialog } from "./PayrollDetailsDialog";
+import { PayrollEditDialog } from "@/components/payroll/PayrollEditDialog";
 
 interface SalarySheetManagerProps {
   payrolls: Payroll[];
@@ -31,7 +32,17 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>("");
   const [selectedPayrolls, setSelectedPayrolls] = useState<string[]>([]);
   const [selectedPayrollForView, setSelectedPayrollForView] = useState<Payroll | null>(null);
+  const [selectedPayrollForEdit, setSelectedPayrollForEdit] = useState<Payroll | null>(null);
   const [showPayrollDetails, setShowPayrollDetails] = useState(false);
+  const [showPayrollEdit, setShowPayrollEdit] = useState(false);
+  const [bankBalance, setBankBalance] = useState<number>(0);
+  
+  // Date filter states
+  const [dateShortcut, setDateShortcut] = useState("current-week");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  
   const { toast } = useToast();
 
   // Update local payrolls when prop changes
@@ -39,11 +50,113 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
     setPayrolls(initialPayrolls);
   }, [initialPayrolls]);
 
+  // Set default dates to current week
+  useEffect(() => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const mondayDate = new Date(today);
+    mondayDate.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    
+    const sundayDate = new Date(mondayDate);
+    sundayDate.setDate(mondayDate.getDate() + 6);
+    
+    setStartDate(mondayDate.toISOString().split('T')[0]);
+    setEndDate(sundayDate.toISOString().split('T')[0]);
+  }, []);
+
   useEffect(() => {
     groupPayrollsByPeriod();
     fetchBankAccounts();
     loadSavedBankAccount();
   }, [payrolls]);
+
+  useEffect(() => {
+    if (selectedBankAccount) {
+      fetchBankBalance();
+    }
+  }, [selectedBankAccount]);
+
+  const handleDateShortcut = (shortcut: string) => {
+    setDateShortcut(shortcut);
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    let start: Date, end: Date;
+    
+    switch (shortcut) {
+      case "last-week":
+        const lastWeekStart = new Date(today);
+        lastWeekStart.setDate(today.getDate() - today.getDay() - 6);
+        const lastWeekEnd = new Date(lastWeekStart);
+        lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+        start = lastWeekStart;
+        end = lastWeekEnd;
+        break;
+        
+      case "current-week":
+        const currentDay = today.getDay();
+        const mondayDate = new Date(today);
+        mondayDate.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+        const sundayDate = new Date(mondayDate);
+        sundayDate.setDate(mondayDate.getDate() + 6);
+        start = mondayDate;
+        end = sundayDate;
+        break;
+        
+      case "last-month":
+        start = new Date(currentYear, currentMonth - 1, 1);
+        end = new Date(currentYear, currentMonth, 0);
+        break;
+        
+      case "this-year":
+        start = new Date(currentYear, 0, 1);
+        end = new Date(currentYear, 11, 31);
+        break;
+        
+      default:
+        const monthNames = [
+          "january", "february", "march", "april", "may", "june",
+          "july", "august", "september", "october", "november", "december"
+        ];
+        const monthIndex = monthNames.indexOf(shortcut.toLowerCase());
+        if (monthIndex !== -1) {
+          start = new Date(currentYear, monthIndex, 1);
+          end = new Date(currentYear, monthIndex + 1, 0);
+        } else {
+          return;
+        }
+    }
+    
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(end.toISOString().split('T')[0]);
+  };
+
+  const generateShortcutOptions = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    
+    const options = [
+      { value: "last-week", label: "Last Week" },
+      { value: "current-week", label: "Current Week" },
+      { value: "last-month", label: "Last Month" },
+    ];
+    
+    for (let i = currentMonth; i >= 0; i--) {
+      options.push({
+        value: monthNames[i].toLowerCase(),
+        label: monthNames[i]
+      });
+    }
+    
+    options.push({ value: "this-year", label: "This Year" });
+    
+    return options;
+  };
 
   const fetchBankAccounts = async () => {
     try {
@@ -58,6 +171,42 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
       setBankAccounts(data || []);
     } catch (error) {
       console.error('Error fetching bank accounts:', error);
+    }
+  };
+
+  const fetchBankBalance = async () => {
+    if (!selectedBankAccount) {
+      setBankBalance(0);
+      return;
+    }
+
+    try {
+      // Get bank account opening balance
+      const { data: bankAccount, error: bankError } = await supabase
+        .from('bank_accounts')
+        .select('opening_balance')
+        .eq('id', selectedBankAccount)
+        .single();
+
+      if (bankError) throw bankError;
+
+      // Get all transactions for this bank account
+      const { data: transactions, error: transError } = await supabase
+        .from('bank_transactions')
+        .select('amount, type')
+        .eq('bank_account_id', selectedBankAccount);
+
+      if (transError) throw transError;
+
+      // Calculate current balance
+      const transactionBalance = transactions.reduce((sum, t) => 
+        sum + (t.type === 'deposit' ? t.amount : -t.amount), 0
+      );
+
+      setBankBalance(bankAccount.opening_balance + transactionBalance);
+    } catch (error) {
+      console.error('Error fetching bank balance:', error);
+      setBankBalance(0);
     }
   };
 
@@ -93,20 +242,93 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
     }
   };
 
-  const filteredPayrolls = selectedPeriod ? groupedPayrolls[selectedPeriod] || [] : [];
-  
-  const searchFilteredPayrolls = filteredPayrolls.filter(payroll =>
-    payroll.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Apply filters to payrolls
+  const getFilteredPayrolls = () => {
+    let filtered = payrolls;
+
+    // Apply date filter
+    if (startDate && endDate) {
+      filtered = filtered.filter(payroll => {
+        const payrollStart = new Date(payroll.pay_period_start);
+        const payrollEnd = new Date(payroll.pay_period_end);
+        const filterStart = new Date(startDate);
+        const filterEnd = new Date(endDate);
+        
+        return (payrollStart >= filterStart && payrollStart <= filterEnd) ||
+               (payrollEnd >= filterStart && payrollEnd <= filterEnd) ||
+               (payrollStart <= filterStart && payrollEnd >= filterEnd);
+      });
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(payroll => payroll.status === statusFilter);
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(payroll =>
+        payroll.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return filtered;
+  };
+
+  const filteredPayrolls = getFilteredPayrolls();
+
+  // Group filtered payrolls by period
+  const groupFilteredPayrollsByPeriod = () => {
+    const grouped: Record<string, Payroll[]> = {};
+    
+    filteredPayrolls.forEach(payroll => {
+      const periodKey = `${payroll.pay_period_start} - ${payroll.pay_period_end}`;
+      if (!grouped[periodKey]) {
+        grouped[periodKey] = [];
+      }
+      grouped[periodKey].push(payroll);
+    });
+
+    return grouped;
+  };
+
+  const filteredGroupedPayrolls = groupFilteredPayrollsByPeriod();
+  const currentPeriodPayrolls = selectedPeriod ? (filteredGroupedPayrolls[selectedPeriod] || []) : [];
+
+  const totalGrossPay = currentPeriodPayrolls.reduce((sum, p) => sum + p.gross_pay, 0);
+  const totalDeductions = currentPeriodPayrolls.reduce((sum, p) => sum + p.deductions, 0);
+  const totalNetPay = currentPeriodPayrolls.reduce((sum, p) => sum + p.net_pay, 0);
+  const totalHours = currentPeriodPayrolls.reduce((sum, p) => sum + p.total_hours, 0);
+
+  // Get payrolls that can be approved (pending status)
+  const approvablePayrolls = currentPeriodPayrolls.filter(p => p.status === 'pending');
+  const selectedApprovablePayrolls = selectedPayrolls.filter(id => 
+    approvablePayrolls.some(p => p.id === id)
   );
 
-  const totalGrossPay = searchFilteredPayrolls.reduce((sum, p) => sum + p.gross_pay, 0);
-  const totalDeductions = searchFilteredPayrolls.reduce((sum, p) => sum + p.deductions, 0);
-  const totalNetPay = searchFilteredPayrolls.reduce((sum, p) => sum + p.net_pay, 0);
-  const totalHours = searchFilteredPayrolls.reduce((sum, p) => sum + p.total_hours, 0);
+  // Get payrolls that can be paid (approved status)
+  const payablePayrolls = currentPeriodPayrolls.filter(p => p.status === 'approved');
+  const selectedPayablePayrolls = selectedPayrolls.filter(id => 
+    payablePayrolls.some(p => p.id === id)
+  );
+
+  // Calculate total amount for selected payable payrolls
+  const totalSelectedPayableAmount = selectedPayablePayrolls.reduce((sum, id) => {
+    const payroll = payablePayrolls.find(p => p.id === id);
+    return sum + (payroll?.net_pay || 0);
+  }, 0);
+
+  // Check if bulk approve is disabled
+  const isBulkApproveDisabled = selectedApprovablePayrolls.length === 0;
+
+  // Check if bulk payment is disabled (no payable payrolls selected OR insufficient bank balance)
+  const isBulkPaymentDisabled = selectedPayablePayrolls.length === 0 || 
+    !selectedBankAccount || 
+    bankBalance < totalSelectedPayableAmount;
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedPayrolls(searchFilteredPayrolls.map(p => p.id));
+      setSelectedPayrolls(currentPeriodPayrolls.map(p => p.id));
     } else {
       setSelectedPayrolls([]);
     }
@@ -121,28 +343,73 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
   };
 
   const handleBulkAction = async (action: 'approve' | 'pay') => {
-    const status = action === 'approve' ? 'approved' : 'paid';
-    const confirmMessage = action === 'approve' 
-      ? `Mark ${selectedPayrolls.length} payrolls as approved?`
-      : `Mark ${selectedPayrolls.length} payrolls as paid?`;
-
-    if (!confirm(confirmMessage)) return;
-
-    try {
-      for (const payrollId of selectedPayrolls) {
-        await updatePayrollStatus(payrollId, status, selectedBankAccount);
+    if (action === 'approve') {
+      if (selectedApprovablePayrolls.length === 0) {
+        toast({
+          title: "No Payrolls to Approve",
+          description: "Please select payrolls with pending status to approve",
+          variant: "destructive"
+        });
+        return;
       }
-      setSelectedPayrolls([]);
-      toast({
-        title: "Success",
-        description: `${selectedPayrolls.length} payrolls marked as ${status}`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to update payrolls",
-        variant: "destructive"
-      });
+
+      const confirmMessage = `Mark ${selectedApprovablePayrolls.length} payrolls as approved?`;
+      if (!confirm(confirmMessage)) return;
+
+      try {
+        for (const payrollId of selectedApprovablePayrolls) {
+          await updatePayrollStatus(payrollId, 'approved');
+        }
+        setSelectedPayrolls([]);
+        toast({
+          title: "Success",
+          description: `${selectedApprovablePayrolls.length} payrolls marked as approved`
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: "Failed to approve payrolls",
+          variant: "destructive"
+        });
+      }
+    } else if (action === 'pay') {
+      if (selectedPayablePayrolls.length === 0) {
+        toast({
+          title: "No Payrolls to Pay",
+          description: "Please select payrolls with approved status to mark as paid",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (bankBalance < totalSelectedPayableAmount) {
+        toast({
+          title: "Insufficient Bank Balance",
+          description: `Bank balance ($${bankBalance.toFixed(2)}) is insufficient for selected payments ($${totalSelectedPayableAmount.toFixed(2)})`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const confirmMessage = `Mark ${selectedPayablePayrolls.length} payrolls as paid? Total amount: $${totalSelectedPayableAmount.toFixed(2)}`;
+      if (!confirm(confirmMessage)) return;
+
+      try {
+        for (const payrollId of selectedPayablePayrolls) {
+          await updatePayrollStatus(payrollId, 'paid', selectedBankAccount);
+        }
+        setSelectedPayrolls([]);
+        toast({
+          title: "Success",
+          description: `${selectedPayablePayrolls.length} payrolls marked as paid`
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: "Failed to mark payrolls as paid",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -323,6 +590,11 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
     setShowPayrollDetails(true);
   };
 
+  const handleEditPayroll = (payroll: Payroll) => {
+    setSelectedPayrollForEdit(payroll);
+    setShowPayrollEdit(true);
+  };
+
   const getSelectedBankName = () => {
     const bank = bankAccounts.find(b => b.id === selectedBankAccount);
     return bank ? `${bank.bank_name} - ${bank.account_number}` : 'Select Bank Account';
@@ -338,6 +610,82 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Date and Status Filters */}
+          <div className="flex flex-wrap items-center gap-4 mb-6">
+            <Select value={dateShortcut} onValueChange={handleDateShortcut}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Date shortcut" />
+              </SelectTrigger>
+              <SelectContent>
+                {generateShortcutOptions().map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-40"
+                placeholder="Start Date"
+              />
+              <span className="text-gray-500">to</span>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-40"
+                placeholder="End Date"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Search employees..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-10 w-10 p-0">
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-sm">Filters</h4>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Status</label>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="All Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Period Selection */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -345,36 +693,28 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                   <SelectValue placeholder="Select pay period" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.keys(groupedPayrolls).sort().reverse().map((period) => (
+                  {Object.keys(filteredGroupedPayrolls).sort().reverse().map((period) => (
                     <SelectItem key={period} value={period}>
-                      {period} ({groupedPayrolls[period].length} employees)
+                      {period} ({filteredGroupedPayrolls[period].length} employees)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="flex-1">
-              <Input
-                placeholder="Search employees..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
 
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={() => handlePrintSheet(searchFilteredPayrolls)}
-                disabled={searchFilteredPayrolls.length === 0}
+                onClick={() => handlePrintSheet(currentPeriodPayrolls)}
+                disabled={currentPeriodPayrolls.length === 0}
               >
                 <Printer className="h-4 w-4 mr-1" />
                 Print
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => handleExportCSV(searchFilteredPayrolls)}
-                disabled={searchFilteredPayrolls.length === 0}
+                onClick={() => handleExportCSV(currentPeriodPayrolls)}
+                disabled={currentPeriodPayrolls.length === 0}
               >
                 <Download className="h-4 w-4 mr-1" />
                 Export
@@ -452,7 +792,7 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                       </div>
                       {selectedBankAccount && (
                         <div className="mt-2 text-xs text-gray-500">
-                          All payments will be processed from: {getSelectedBankName()}
+                          Bank Balance: ${bankBalance.toFixed(2)} | Selected: {getSelectedBankName()}
                         </div>
                       )}
                     </CardContent>
@@ -468,12 +808,23 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-medium">
                           {selectedPayrolls.length} payroll(s) selected
+                          {selectedApprovablePayrolls.length > 0 && (
+                            <span className="text-blue-600 ml-2">
+                              ({selectedApprovablePayrolls.length} approvable)
+                            </span>
+                          )}
+                          {selectedPayablePayrolls.length > 0 && (
+                            <span className="text-green-600 ml-2">
+                              ({selectedPayablePayrolls.length} payable - ${totalSelectedPayableAmount.toFixed(2)})
+                            </span>
+                          )}
                         </div>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleBulkAction('approve')}
+                            disabled={isBulkApproveDisabled}
                           >
                             <Check className="h-4 w-4 mr-1" />
                             Bulk Approve
@@ -481,13 +832,18 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                           <Button
                             size="sm"
                             onClick={() => handleBulkAction('pay')}
-                            disabled={!selectedBankAccount}
+                            disabled={isBulkPaymentDisabled}
                           >
                             <DollarSign className="h-4 w-4 mr-1" />
                             Bulk Mark as Paid
                           </Button>
                         </div>
                       </div>
+                      {isBulkPaymentDisabled && selectedPayablePayrolls.length > 0 && bankBalance < totalSelectedPayableAmount && (
+                        <div className="mt-2 text-xs text-red-500">
+                          Insufficient bank balance for selected payments
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -500,7 +856,7 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 font-medium text-gray-600">
                         <Checkbox
-                          checked={selectedPayrolls.length === searchFilteredPayrolls.length && searchFilteredPayrolls.length > 0}
+                          checked={selectedPayrolls.length === currentPeriodPayrolls.length && currentPeriodPayrolls.length > 0}
                           onCheckedChange={handleSelectAll}
                         />
                       </th>
@@ -515,7 +871,7 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                     </tr>
                   </thead>
                   <tbody>
-                    {searchFilteredPayrolls.map((payroll) => (
+                    {currentPeriodPayrolls.map((payroll) => (
                       <tr key={payroll.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <Checkbox
@@ -557,10 +913,15 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                                 <ActionDropdown
                                   items={[
                                     {
+                                      label: "Edit",
+                                      onClick: () => handleEditPayroll(payroll),
+                                      icon: <Edit className="h-4 w-4" />
+                                    },
+                                    {
                                       label: "Delete",
                                       onClick: () => deletePayroll(payroll.id),
                                       icon: <Trash2 className="h-4 w-4" />,
-                                      variant: "destructive"
+                                      destructive: true
                                     },
                                     {
                                       label: "View Details",
@@ -584,10 +945,15 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                                 <ActionDropdown
                                   items={[
                                     {
+                                      label: "Edit",
+                                      onClick: () => handleEditPayroll(payroll),
+                                      icon: <Edit className="h-4 w-4" />
+                                    },
+                                    {
                                       label: "Delete",
                                       onClick: () => deletePayroll(payroll.id),
                                       icon: <Trash2 className="h-4 w-4" />,
-                                      variant: "destructive"
+                                      destructive: true
                                     },
                                     {
                                       label: "View Details",
@@ -636,9 +1002,19 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
       {/* Payroll Details Dialog */}
       <PayrollDetailsDialog
         payroll={selectedPayrollForView}
-        open={showPayrollDetails}
-        onOpenChange={setShowPayrollDetails}
-        onRefresh={onRefresh}
+        isOpen={showPayrollDetails}
+        onClose={() => setShowPayrollDetails(false)}
+      />
+
+      {/* Payroll Edit Dialog */}
+      <PayrollEditDialog
+        payroll={selectedPayrollForEdit}
+        isOpen={showPayrollEdit}
+        onClose={() => setShowPayrollEdit(false)}
+        onSuccess={() => {
+          onRefresh();
+          setShowPayrollEdit(false);
+        }}
       />
     </div>
   );

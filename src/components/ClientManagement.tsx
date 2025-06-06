@@ -1,24 +1,23 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Client } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
-import { ServerSideClientDataTable } from "@/components/tables/ServerSideClientDataTable";
 
 export const ClientManagement = () => {
-  const [clientStats, setClientStats] = useState({
-    totalClients: 0,
-    activeClients: 0,
-    totalProjects: 0
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [projectCounts, setProjectCounts] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -30,46 +29,53 @@ export const ClientManagement = () => {
   });
 
   useEffect(() => {
-    fetchClientStats();
+    fetchClients();
+    fetchProjectCounts();
   }, []);
 
-  const fetchClientStats = async () => {
+  const fetchClients = async () => {
     try {
-      // Fetch client counts
-      const { data: clientData, error: clientError } = await supabase
+      const { data, error } = await supabase
         .from('clients')
-        .select('*', { count: 'exact' });
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (clientError) throw clientError;
-
-      // Fetch project counts
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*', { count: 'exact' });
-
-      if (projectError) throw projectError;
-
-      const totalClients = clientData?.length || 0;
-      const activeClients = clientData?.filter((c: Client) => c.status === 'active').length || 0;
-      const totalProjects = projectData?.length || 0;
-
-      setClientStats({
-        totalClients,
-        activeClients,
-        totalProjects
-      });
+      if (error) throw error;
+      // Type cast the data to ensure proper typing
+      setClients((data || []) as Client[]);
     } catch (error) {
-      console.error('Error fetching client stats:', error);
+      console.error('Error fetching clients:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch client statistics",
+        description: "Failed to fetch clients",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProjectCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('client_id');
+
+      if (error) throw error;
+      
+      const counts: Record<string, number> = {};
+      data?.forEach(project => {
+        counts[project.client_id] = (counts[project.client_id] || 0) + 1;
+      });
+      setProjectCounts(counts);
+    } catch (error) {
+      console.error('Error fetching project counts:', error);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       if (editingClient) {
@@ -92,7 +98,7 @@ export const ClientManagement = () => {
       setIsDialogOpen(false);
       setEditingClient(null);
       setFormData({ name: "", email: "", phone: "", company: "", status: "active" });
-      fetchClientStats(); // Refresh stats after changes
+      fetchClients();
     } catch (error) {
       console.error('Error saving client:', error);
       toast({
@@ -100,6 +106,8 @@ export const ClientManagement = () => {
         description: "Failed to save client",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -126,7 +134,8 @@ export const ClientManagement = () => {
 
       if (error) throw error;
       toast({ title: "Success", description: "Client deleted successfully" });
-      fetchClientStats(); // Refresh stats after deletion
+      fetchClients();
+      fetchProjectCounts();
     } catch (error) {
       console.error('Error deleting client:', error);
       toast({
@@ -136,6 +145,18 @@ export const ClientManagement = () => {
       });
     }
   };
+
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.company.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalProjects = Object.values(projectCounts).reduce((sum, count) => sum + count, 0);
+
+  if (loading && clients.length === 0) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -204,8 +225,8 @@ export const ClientManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit">
-                {editingClient ? "Update Client" : "Add Client"}
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : editingClient ? "Update Client" : "Add Client"}
               </Button>
             </form>
           </DialogContent>
@@ -219,7 +240,7 @@ export const ClientManagement = () => {
             <Building2 className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{clientStats.totalClients}</div>
+            <div className="text-2xl font-bold text-gray-900">{clients.length}</div>
           </CardContent>
         </Card>
 
@@ -230,7 +251,7 @@ export const ClientManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {clientStats.activeClients}
+              {clients.filter(c => c.status === "active").length}
             </div>
           </CardContent>
         </Card>
@@ -241,15 +262,70 @@ export const ClientManagement = () => {
             <Building2 className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{clientStats.totalProjects}</div>
+            <div className="text-2xl font-bold text-gray-900">{totalProjects}</div>
           </CardContent>
         </Card>
       </div>
 
-      <ServerSideClientDataTable
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Clients</CardTitle>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search clients..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Company</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Contact</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Email</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Phone</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Projects</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredClients.map((client) => (
+                  <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4 font-medium text-gray-900">{client.company}</td>
+                    <td className="py-3 px-4 text-gray-600">{client.name}</td>
+                    <td className="py-3 px-4 text-gray-600">{client.email}</td>
+                    <td className="py-3 px-4 text-gray-600">{client.phone || '-'}</td>
+                    <td className="py-3 px-4 text-gray-600">{projectCounts[client.id] || 0}</td>
+                    <td className="py-3 px-4">
+                      <Badge variant={client.status === "active" ? "default" : "secondary"}>
+                        {client.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(client)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(client.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

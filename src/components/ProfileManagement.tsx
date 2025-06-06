@@ -7,7 +7,7 @@ import { Users, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Profile } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
-import { ProfileDataTable } from "./tables/ProfileDataTable";
+import { ProfileTable } from "./profile/ProfileTable";
 import { ProfileForm } from "./profile/ProfileForm";
 import { ProfileStats } from "./profile/ProfileStats";
 import { BankAccountManagement } from "./bank/BankAccountManagement";
@@ -154,12 +154,11 @@ export const ProfileManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <ProfileDataTable 
+          <ProfileTable 
             profiles={filteredProfiles} 
             onEdit={handleEdit} 
             onDelete={handleDelete}
             onManageBank={(profile) => setSelectedProfileForBank(profile)}
-            loading={loading}
           />
         </CardContent>
       </Card>
