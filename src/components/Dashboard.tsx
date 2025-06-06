@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Briefcase, Clock, DollarSign, Building, FileText, TrendingUp, Calendar } from "lucide-react";
+import { Users, Briefcase, Clock, DollarSign, Building, FileText, TrendingUp, Calendar, Bell, BarChart3, Banknote, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
@@ -13,7 +13,13 @@ export const Dashboard = () => {
     pendingHours: 0,
     totalRevenue: 0,
     bankAccounts: 0,
-    completedProjects: 0
+    completedProjects: 0,
+    totalClients: 0,
+    totalRosters: 0,
+    totalPayroll: 0,
+    unreadNotifications: 0,
+    totalHours: 0,
+    netCashFlow: 0
   });
 
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
@@ -69,77 +75,113 @@ export const Dashboard = () => {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
 
-      // Fetch profiles count
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('is_active', true);
-
-      if (profilesError) throw profilesError;
-
-      // Fetch projects count
-      const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select('id, status');
-
-      if (projectsError) throw projectsError;
-
-      // Fetch working hours for date range
-      const { data: workingHours, error: workingHoursError } = await supabase
-        .from('working_hours')
-        .select(`
-          total_hours,
-          status,
-          date,
+      // Fetch comprehensive data for complete app summary
+      const [
+        profilesRes, projectsRes, workingHoursRes, transactionsRes, bankAccountsRes,
+        clientsRes, rostersRes, payrollRes, notificationsRes, recentHoursRes
+      ] = await Promise.all([
+        // Profiles
+        supabase.from('profiles').select('id, full_name, role, is_active').eq('is_active', true),
+        
+        // Projects  
+        supabase.from('projects').select('id, status, budget, start_date, end_date'),
+        
+        // Working hours for date range
+        supabase.from('working_hours').select(`
+          total_hours, status, date, payable_amount,
           profiles!working_hours_profile_id_fkey (id, full_name),
           projects!working_hours_project_id_fkey (id, name)
-        `)
-        .gte('date', startDateStr)
-        .lte('date', endDateStr);
-
-      if (workingHoursError) throw workingHoursError;
-
-      // Fetch bank transactions for revenue
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('bank_transactions')
-        .select('amount, type, date')
-        .eq('type', 'deposit')
-        .gte('date', startDateStr)
-        .lte('date', endDateStr);
-
-      if (transactionsError) throw transactionsError;
-
-      // Fetch bank accounts count
-      const { data: bankAccounts, error: bankAccountsError } = await supabase
-        .from('bank_accounts')
-        .select('id');
-
-      if (bankAccountsError) throw bankAccountsError;
-
-      // Fetch recent working hours with profiles for activities
-      const { data: recentHours, error: recentHoursError } = await supabase
-        .from('working_hours')
-        .select(`
-          *,
-          profiles!working_hours_profile_id_fkey (id, full_name),
+        `).gte('date', startDateStr).lte('date', endDateStr),
+        
+        // Bank transactions
+        supabase.from('bank_transactions').select('amount, type, date, category')
+          .gte('date', startDateStr).lte('date', endDateStr),
+        
+        // Bank accounts
+        supabase.from('bank_accounts').select('id, bank_name, opening_balance'),
+        
+        // Clients
+        supabase.from('clients').select('id, status'),
+        
+        // Rosters for date range
+        supabase.from('rosters').select('id, status, date, total_hours')
+          .gte('date', startDateStr).lte('date', endDateStr),
+        
+        // Payroll for date range
+        supabase.from('payroll').select('id, status, gross_pay, net_pay, pay_period_start, pay_period_end')
+          .gte('pay_period_start', startDateStr).lte('pay_period_end', endDateStr),
+        
+        // Notifications
+        supabase.from('notifications').select('id, is_read, priority, created_at')
+          .gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString()),
+        
+        // Recent activities
+        supabase.from('working_hours').select(`
+          *, profiles!working_hours_profile_id_fkey (id, full_name),
           projects!working_hours_project_id_fkey (id, name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        `).order('created_at', { ascending: false }).limit(10)
+      ]);
 
-      if (recentHoursError) throw recentHoursError;
+      // Handle errors
+      if (profilesRes.error) throw profilesRes.error;
+      if (projectsRes.error) throw projectsRes.error;
+      if (workingHoursRes.error) throw workingHoursRes.error;
+      if (transactionsRes.error) throw transactionsRes.error;
+      if (bankAccountsRes.error) throw bankAccountsRes.error;
+      if (clientsRes.error) throw clientsRes.error;
+      if (rostersRes.error) throw rostersRes.error;
+      if (payrollRes.error) throw payrollRes.error;
+      if (notificationsRes.error) throw notificationsRes.error;
+      if (recentHoursRes.error) throw recentHoursRes.error;
 
-      // Calculate stats
-      const totalProfiles = profiles?.length || 0;
-      const activeProjects = projects?.filter(p => p.status === 'active').length || 0;
-      const completedProjects = projects?.filter(p => p.status === 'completed').length || 0;
+      const profiles = profilesRes.data || [];
+      const projects = projectsRes.data || [];
+      const workingHours = workingHoursRes.data || [];
+      const transactions = transactionsRes.data || [];
+      const bankAccounts = bankAccountsRes.data || [];
+      const clients = clientsRes.data || [];
+      const rosters = rostersRes.data || [];
+      const payrollData = payrollRes.data || [];
+      const notifications = notificationsRes.data || [];
+      const recentHours = recentHoursRes.data || [];
+
+      // Calculate comprehensive app statistics
+      const totalProfiles = profiles.length;
+      const activeProfiles = profiles.filter(p => p.role !== 'admin').length;
+      const adminProfiles = profiles.filter(p => p.role === 'admin').length;
       
-      // Handle working hours data safely
-      const pendingHours = (workingHours || []).filter(wh => wh.status === 'pending').reduce((sum, wh) => sum + wh.total_hours, 0);
-      const totalHours = (workingHours || []).reduce((sum, wh) => sum + wh.total_hours, 0);
+      const totalProjects = projects.length;
+      const activeProjects = projects.filter(p => p.status === 'active').length;
+      const completedProjects = projects.filter(p => p.status === 'completed').length;
+      const projectBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0);
       
-      const totalRevenue = transactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
-      const totalBankAccounts = bankAccounts?.length || 0;
+      const totalClients = clients.length;
+      const activeClients = clients.filter(c => c.status === 'active').length;
+      
+      const totalHours = workingHours.reduce((sum, wh) => sum + wh.total_hours, 0);
+      const pendingHours = workingHours.filter(wh => wh.status === 'pending').reduce((sum, wh) => sum + wh.total_hours, 0);
+      const approvedHours = workingHours.filter(wh => wh.status === 'approved').reduce((sum, wh) => sum + wh.total_hours, 0);
+      const totalPayableAmount = workingHours.reduce((sum, wh) => sum + (wh.payable_amount || 0), 0);
+      
+      const totalRosters = rosters.length;
+      const pendingRosters = rosters.filter(r => r.status === 'pending').length;
+      const confirmedRosters = rosters.filter(r => r.status === 'confirmed').length;
+      
+      const totalPayroll = payrollData.reduce((sum, p) => sum + p.net_pay, 0);
+      const pendingPayroll = payrollData.filter(p => p.status === 'pending').length;
+      const paidPayroll = payrollData.filter(p => p.status === 'paid').length;
+      
+      const deposits = transactions.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
+      const withdrawals = transactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
+      const totalRevenue = deposits;
+      const netCashFlow = deposits - withdrawals;
+      
+      const totalBankAccounts = bankAccounts.length;
+      const totalBankBalance = bankAccounts.reduce((sum, ba) => sum + (ba.opening_balance || 0), 0);
+      
+      const totalNotifications = notifications.length;
+      const unreadNotifications = notifications.filter(n => !n.is_read).length;
+      const highPriorityNotifications = notifications.filter(n => n.priority === 'high').length;
 
       // Prepare chart data for hours over time
       const hoursChartData = (workingHours || []).reduce((acc: any[], wh) => {
@@ -196,7 +238,13 @@ export const Dashboard = () => {
         pendingHours,
         totalRevenue,
         bankAccounts: totalBankAccounts,
-        completedProjects
+        completedProjects,
+        totalClients,
+        totalRosters,
+        totalPayroll,
+        unreadNotifications,
+        totalHours,
+        netCashFlow
       });
 
       setRecentActivities(activities);
@@ -225,16 +273,46 @@ export const Dashboard = () => {
       color: "text-green-600" 
     },
     { 
+      title: "Total Clients", 
+      value: stats.totalClients.toString(), 
+      icon: UserCheck, 
+      color: "text-indigo-600" 
+    },
+    { 
+      title: "Total Hours", 
+      value: `${Math.round(stats.totalHours)}h`, 
+      icon: Clock, 
+      color: "text-blue-500" 
+    },
+    { 
       title: "Pending Hours", 
-      value: `${stats.pendingHours}h`, 
+      value: `${Math.round(stats.pendingHours)}h`, 
       icon: Clock, 
       color: "text-orange-600" 
+    },
+    { 
+      title: "Total Rosters", 
+      value: stats.totalRosters.toString(), 
+      icon: Calendar, 
+      color: "text-purple-500" 
     },
     { 
       title: "Total Revenue", 
       value: `$${stats.totalRevenue.toLocaleString()}`, 
       icon: DollarSign, 
       color: "text-emerald-600" 
+    },
+    { 
+      title: "Net Cash Flow", 
+      value: `$${stats.netCashFlow.toLocaleString()}`, 
+      icon: TrendingUp, 
+      color: stats.netCashFlow >= 0 ? "text-green-600" : "text-red-600"
+    },
+    { 
+      title: "Total Payroll", 
+      value: `$${stats.totalPayroll.toLocaleString()}`, 
+      icon: Banknote, 
+      color: "text-violet-600" 
     },
     { 
       title: "Bank Accounts", 
@@ -247,6 +325,12 @@ export const Dashboard = () => {
       value: stats.completedProjects.toString(), 
       icon: FileText, 
       color: "text-gray-600" 
+    },
+    { 
+      title: "Unread Notifications", 
+      value: stats.unreadNotifications.toString(), 
+      icon: Bell, 
+      color: "text-red-500" 
     }
   ];
 
@@ -280,7 +364,7 @@ export const Dashboard = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {dashboardStats.map((stat) => {
           const Icon = stat.icon;
           return (
