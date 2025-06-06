@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
-import { Plus, TrendingUp, TrendingDown, Building, DollarSign, Minus, Edit, Trash2, Search } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Building, DollarSign, Minus, Edit, Trash2, Search, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BankAccount, BankTransaction, Profile, Client, Project } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,9 @@ export const BankBalance = () => {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<BankTransaction[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterProfile, setFilterProfile] = useState("");
+  const [filterClient, setFilterClient] = useState("");
+  const [filterProject, setFilterProject] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -71,25 +75,46 @@ export const BankBalance = () => {
 
   useEffect(() => {
     filterTransactions();
-  }, [searchTerm, transactions]);
+  }, [searchTerm, filterProfile, filterClient, filterProject, transactions]);
 
   const filterTransactions = () => {
-    if (!searchTerm) {
-      setFilteredTransactions(transactions);
-      return;
+    let filtered = transactions;
+
+    // Apply search term filter
+    if (searchTerm) {
+      filtered = filtered.filter(transaction => 
+        transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.clients?.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.projects?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.amount.toString().includes(searchTerm) ||
+        transaction.type.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
 
-    const filtered = transactions.filter(transaction => 
-      transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.clients?.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.projects?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.amount.toString().includes(searchTerm) ||
-      transaction.type.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Apply profile filter
+    if (filterProfile) {
+      filtered = filtered.filter(transaction => transaction.profile_id === filterProfile);
+    }
+
+    // Apply client filter
+    if (filterClient) {
+      filtered = filtered.filter(transaction => transaction.client_id === filterClient);
+    }
+
+    // Apply project filter
+    if (filterProject) {
+      filtered = filtered.filter(transaction => transaction.project_id === filterProject);
+    }
 
     setFilteredTransactions(filtered);
+  };
+
+  const clearFilters = () => {
+    setFilterProfile("");
+    setFilterClient("");
+    setFilterProject("");
   };
 
   const fetchAllData = async () => {
@@ -918,6 +943,97 @@ export const BankBalance = () => {
                     className="pl-10 w-64"
                   />
                 </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`flex items-center gap-2 ${
+                        filterProfile || filterClient || filterProject
+                          ? 'bg-blue-50 border-blue-300 text-blue-700'
+                          : ''
+                      }`}
+                    >
+                      <Filter className="h-4 w-4" />
+                      Filters
+                      {(filterProfile || filterClient || filterProject) && (
+                        <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
+                          {[filterProfile, filterClient, filterProject].filter(Boolean).length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-4" align="end">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm">Filter Transactions</h4>
+                        {(filterProfile || filterClient || filterProject) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearFilters}
+                            className="text-xs h-6 px-2"
+                          >
+                            Clear all
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-xs font-medium">Employee</Label>
+                          <Select value={filterProfile} onValueChange={setFilterProfile}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="All employees" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">All employees</SelectItem>
+                              {profiles.map((profile) => (
+                                <SelectItem key={profile.id} value={profile.id}>
+                                  {profile.full_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-medium">Client</Label>
+                          <Select value={filterClient} onValueChange={setFilterClient}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="All clients" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">All clients</SelectItem>
+                              {clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.company}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-medium">Project</Label>
+                          <Select value={filterProject} onValueChange={setFilterProject}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="All projects" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">All projects</SelectItem>
+                              {projects.map((project) => (
+                                <SelectItem key={project.id} value={project.id}>
+                                  {project.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardHeader>
