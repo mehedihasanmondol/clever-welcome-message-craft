@@ -471,8 +471,50 @@ export const PayrollComponent = () => {
                       const endDate = dates[dates.length - 1]?.toLocaleDateString();
                       
                       return (
-                        <div key={profile.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex items-center justify-between">
+                        <div key={profile.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                          {/* Mobile Layout */}
+                          <div className="block sm:hidden">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center shrink-0">
+                                <span className="font-medium text-gray-700 text-sm">
+                                  {profile.full_name.split(' ').map(n => n[0]).join('')}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-gray-900 truncate">{profile.full_name}</h3>
+                                <p className="text-sm text-gray-600">{profile.role}</p>
+                              </div>
+                              <PayrollQuickGenerate
+                                profiles={profiles}
+                                profilesWithHours={profilesWithHours}
+                                workingHours={workingHours}
+                                onRefresh={fetchPayrolls}
+                                preSelectedProfile={profile}
+                              />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div className="bg-gray-50 p-2 rounded">
+                                <span className="text-gray-600 block">Hours:</span>
+                                <div className="font-medium">{totalHours.toFixed(1)}h</div>
+                              </div>
+                              <div className="bg-gray-50 p-2 rounded">
+                                <span className="text-gray-600 block">Rate:</span>
+                                <div className="font-medium">${avgRate.toFixed(2)}/hr</div>
+                              </div>
+                              <div className="bg-gray-50 p-2 rounded col-span-2">
+                                <span className="text-gray-600 block">Period:</span>
+                                <div className="font-medium text-xs">{startDate} - {endDate}</div>
+                              </div>
+                              <div className="bg-green-50 p-2 rounded col-span-2">
+                                <span className="text-gray-600 block">Estimated Pay:</span>
+                                <div className="font-medium text-green-600">${estimatedPay.toFixed(2)}</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Desktop Layout */}
+                          <div className="hidden sm:flex items-center justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
                                 <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
