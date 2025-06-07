@@ -310,12 +310,11 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
                 <h3 className="text-lg font-semibold mb-4">Step 1: Select Profiles & Configure Pay Period</h3>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 order-2 lg:order-1">
+                  <div className="lg:col-span-2">
                     <div className="mb-4">
                       <div className="flex items-center gap-2 text-sm text-blue-600 mb-2">
                         <Calculator className="h-4 w-4" />
-                        <span className="hidden sm:inline">Showing employees with approved working hours for selected period</span>
-                        <span className="sm:hidden">Employees with approved hours</span>
+                        Showing employees with approved working hours for selected period
                         {filterLoading && <RefreshCw className="h-4 w-4 animate-spin" />}
                       </div>
                     </div>
@@ -330,7 +329,7 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
                     />
                   </div>
                   
-                  <div className="space-y-4 order-1 lg:order-2">
+                  <div className="space-y-4">
                     <div className="bg-gray-50 p-4 rounded-lg space-y-4">
                       <h4 className="font-medium text-gray-700">Pay Period Settings</h4>
                       
@@ -362,14 +361,12 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
                       {filterLoading ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          <span className="hidden sm:inline">Refreshing...</span>
-                          <span className="sm:hidden">Loading...</span>
+                          Refreshing...
                         </>
                       ) : (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2" />
-                          <span className="hidden sm:inline">Refresh Data</span>
-                          <span className="sm:hidden">Refresh</span>
+                          Refresh Data
                         </>
                       )}
                     </Button>
@@ -472,37 +469,37 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
                 <h3 className="text-lg font-semibold">Step 2: Review Payroll Calculations</h3>
               </div>
 
-              {/* Mobile-friendly Summary Statistics */}
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Summary Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
-                  <CardContent className="pt-4">
+                  <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{totalEmployees}</div>
-                      <div className="text-xs sm:text-sm text-gray-600">Employees</div>
+                      <div className="text-2xl font-bold text-blue-600">{totalEmployees}</div>
+                      <div className="text-sm text-gray-600">Total Employees</div>
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-4">
+                  <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{totalHoursSum.toFixed(1)}</div>
-                      <div className="text-xs sm:text-sm text-gray-600">Total Hours</div>
+                      <div className="text-2xl font-bold text-purple-600">{totalHoursSum.toFixed(1)}</div>
+                      <div className="text-sm text-gray-600">Total Hours</div>
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-4">
+                  <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">${totalGrossPay.toFixed(2)}</div>
-                      <div className="text-xs sm:text-sm text-gray-600">Gross Pay</div>
+                      <div className="text-2xl font-bold text-orange-600">${totalGrossPay.toFixed(2)}</div>
+                      <div className="text-sm text-gray-600">Gross Pay</div>
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-4">
+                  <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">${totalPreviewAmount.toFixed(2)}</div>
-                      <div className="text-xs sm:text-sm text-gray-600">Net Pay</div>
+                      <div className="text-2xl font-bold text-green-600">${totalPreviewAmount.toFixed(2)}</div>
+                      <div className="text-sm text-gray-600">Net Pay</div>
                     </div>
                   </CardContent>
                 </Card>
@@ -514,8 +511,7 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
                 </div>
               ) : (
                 <>
-                  {/* Desktop table view */}
-                  <div className="hidden lg:block max-h-96 overflow-y-auto border rounded-lg">
+                  <div className="max-h-96 overflow-y-auto border rounded-lg">
                     <table className="w-full">
                       <thead className="sticky top-0 bg-gray-50 border-b">
                         <tr>
@@ -553,74 +549,6 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
                         ))}
                       </tbody>
                     </table>
-                  </div>
-
-                  {/* Mobile card view */}
-                  <div className="lg:hidden space-y-4 max-h-96 overflow-y-auto">
-                    {payrollPreview.map((preview) => (
-                      <Card key={preview.profile.id} className="border-l-4 border-l-green-500">
-                        <CardContent className="p-4">
-                          <div className="space-y-3">
-                            {/* Header with employee info */}
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-base text-gray-900 truncate">
-                                  {preview.profile.full_name}
-                                </h4>
-                                <p className="text-sm text-gray-600 truncate">
-                                  {preview.profile.role}
-                                </p>
-                              </div>
-                              <div className="shrink-0 text-right">
-                                <div className="font-bold text-green-600">${preview.netPay.toFixed(2)}</div>
-                                <div className="text-xs text-gray-500">Net Pay</div>
-                              </div>
-                            </div>
-
-                            {/* Hours breakdown */}
-                            <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                              <div className="text-xs text-blue-600 font-medium mb-1">Hours Breakdown</div>
-                              <div className="grid grid-cols-3 gap-2 text-xs">
-                                <div>
-                                  <span className="text-gray-600">Regular:</span>
-                                  <div className="font-medium">{preview.regularHours.toFixed(1)}h</div>
-                                </div>
-                                {preview.overtimeHours > 0 && (
-                                  <div>
-                                    <span className="text-orange-600">Overtime:</span>
-                                    <div className="font-medium text-orange-600">{preview.overtimeHours.toFixed(1)}h</div>
-                                  </div>
-                                )}
-                                <div>
-                                  <span className="text-gray-600">Total:</span>
-                                  <div className="font-bold text-blue-600">{preview.totalHours.toFixed(1)}h</div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Financial breakdown */}
-                            <div className="grid grid-cols-4 gap-2">
-                              <div className="text-center p-2 bg-purple-50 rounded">
-                                <div className="text-xs text-purple-600 font-medium">Rate</div>
-                                <div className="font-semibold text-purple-700">${preview.hourlyRate.toFixed(2)}</div>
-                              </div>
-                              <div className="text-center p-2 bg-orange-50 rounded">
-                                <div className="text-xs text-orange-600 font-medium">Gross</div>
-                                <div className="font-semibold text-orange-700">${preview.grossPay.toFixed(2)}</div>
-                              </div>
-                              <div className="text-center p-2 bg-red-50 rounded">
-                                <div className="text-xs text-red-600 font-medium">Deduct</div>
-                                <div className="font-semibold text-red-700">${preview.deductions.toFixed(2)}</div>
-                              </div>
-                              <div className="text-center p-2 bg-green-50 rounded">
-                                <div className="text-xs text-green-600 font-medium">Net</div>
-                                <div className="font-semibold text-green-700">${preview.netPay.toFixed(2)}</div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
                   </div>
 
                   {/* Collapsible Working Hours Details */}
@@ -672,20 +600,17 @@ export const PayrollGenerationWizard = ({ profiles, workingHours, onRefresh }: P
                 </>
               )}
 
-              {/* Mobile-friendly action buttons */}
-              <div className="flex flex-col sm:flex-row justify-between gap-3">
-                <Button variant="outline" onClick={() => setStep(1)} className="w-full sm:w-auto">
-                  <span className="sm:hidden">Back</span>
-                  <span className="hidden sm:inline">Back: Edit Selection</span>
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setStep(1)}>
+                  Back: Edit Selection
                 </Button>
                 <Button 
                   onClick={generatePayroll}
                   disabled={loading || payrollPreview.length === 0}
-                  className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   <DollarSign className="h-4 w-4 mr-2" />
-                  <span className="sm:hidden">{loading ? "Generating..." : "Generate Payroll"}</span>
-                  <span className="hidden sm:inline">{loading ? "Generating..." : "Generate Payroll Records"}</span>
+                  {loading ? "Generating..." : "Generate Payroll Records"}
                 </Button>
               </div>
             </div>
