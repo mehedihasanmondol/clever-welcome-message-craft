@@ -28,10 +28,9 @@ export const Dashboard = () => {
 
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('current_week');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [useCustomRange, setUseCustomRange] = useState(false);
+  const [dateShortcut, setDateShortcut] = useState('current-week');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [chartData, setChartData] = useState<any[]>([]);
   const [projectData, setProjectData] = useState<any[]>([]);
   const [hoursData, setHoursData] = useState<any[]>([]);
@@ -40,90 +39,114 @@ export const Dashboard = () => {
   const [clientData, setClientData] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
+  // Set default dates to current week
   useEffect(() => {
-    fetchDashboardData();
-  }, [dateRange, customStartDate, customEndDate, useCustomRange]);
+    const today = new Date();
+    const currentDay = today.getDay();
+    const mondayDate = new Date(today);
+    mondayDate.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    
+    const sundayDate = new Date(mondayDate);
+    sundayDate.setDate(mondayDate.getDate() + 6);
+    
+    setStartDate(mondayDate.toISOString().split('T')[0]);
+    setEndDate(sundayDate.toISOString().split('T')[0]);
+  }, []);
 
-  const getDateRange = () => {
-    if (useCustomRange && customStartDate && customEndDate) {
-      return {
-        startDate: new Date(customStartDate),
-        endDate: new Date(customEndDate)
-      };
-    }
-
-    const now = new Date();
-    let startDate: Date;
-    let endDate: Date = new Date();
-
-    switch (dateRange) {
-      case 'today':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-        break;
-      case 'current_week':
-        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
-        endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
-        break;
-      case 'last_week':
-        const lastWeekStart = new Date(now.setDate(now.getDate() - now.getDay() - 7));
-        const lastWeekEnd = new Date(now.setDate(now.getDate() - now.getDay() - 1));
-        startDate = lastWeekStart;
-        endDate = lastWeekEnd;
-        break;
-      case 'current_month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'last_month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      // Month-specific options
-      case 'january':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 1, 0);
-        break;
-      case 'february':
-        startDate = new Date(now.getFullYear(), 1, 1);
-        endDate = new Date(now.getFullYear(), 2, 0);
-        break;
-      case 'march':
-        startDate = new Date(now.getFullYear(), 2, 1);
-        endDate = new Date(now.getFullYear(), 3, 0);
-        break;
-      case 'april':
-        startDate = new Date(now.getFullYear(), 3, 1);
-        endDate = new Date(now.getFullYear(), 4, 0);
-        break;
-      case 'may':
-        startDate = new Date(now.getFullYear(), 4, 1);
-        endDate = new Date(now.getFullYear(), 5, 0);
-        break;
-      case 'june':
-        startDate = new Date(now.getFullYear(), 5, 1);
-        endDate = new Date(now.getFullYear(), 6, 0);
-        break;
-      default:
-        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
-        endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
-    }
-
-    return { startDate, endDate };
-  };
-
-  const handleCustomDateRange = () => {
-    if (customStartDate && customEndDate) {
-      setUseCustomRange(true);
+  useEffect(() => {
+    if (startDate && endDate) {
       fetchDashboardData();
     }
+  }, [startDate, endDate]);
+
+  const handleDateShortcut = (shortcut: string) => {
+    setDateShortcut(shortcut);
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    let start: Date, end: Date;
+    
+    switch (shortcut) {
+      case "last-week":
+        const lastWeekStart = new Date(today);
+        lastWeekStart.setDate(today.getDate() - today.getDay() - 6);
+        const lastWeekEnd = new Date(lastWeekStart);
+        lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+        start = lastWeekStart;
+        end = lastWeekEnd;
+        break;
+        
+      case "current-week":
+        const currentDay = today.getDay();
+        const mondayDate = new Date(today);
+        mondayDate.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+        const sundayDate = new Date(mondayDate);
+        sundayDate.setDate(mondayDate.getDate() + 6);
+        start = mondayDate;
+        end = sundayDate;
+        break;
+        
+      case "last-month":
+        start = new Date(currentYear, currentMonth - 1, 1);
+        end = new Date(currentYear, currentMonth, 0);
+        break;
+        
+      case "this-year":
+        start = new Date(currentYear, 0, 1);
+        end = new Date(currentYear, 11, 31);
+        break;
+        
+      default:
+        // Handle month shortcuts (january, february, etc.)
+        const monthNames = [
+          "january", "february", "march", "april", "may", "june",
+          "july", "august", "september", "october", "november", "december"
+        ];
+        const monthIndex = monthNames.indexOf(shortcut.toLowerCase());
+        if (monthIndex !== -1) {
+          start = new Date(currentYear, monthIndex, 1);
+          end = new Date(currentYear, monthIndex + 1, 0);
+        } else {
+          return;
+        }
+    }
+    
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(end.toISOString().split('T')[0]);
+  };
+
+  const generateShortcutOptions = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    
+    const options = [
+      { value: "last-week", label: "Last Week" },
+      { value: "current-week", label: "Current Week" },
+      { value: "last-month", label: "Last Month" },
+    ];
+    
+    // Add months from current month down to January
+    for (let i = currentMonth; i >= 0; i--) {
+      options.push({
+        value: monthNames[i].toLowerCase(),
+        label: monthNames[i]
+      });
+    }
+    
+    options.push({ value: "this-year", label: "This Year" });
+    
+    return options;
   };
 
   const fetchDashboardData = async () => {
     try {
-      const { startDate, endDate } = getDateRange();
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      const startDateStr = startDate;
+      const endDateStr = endDate;
 
       // Fetch comprehensive data for complete app summary
       const [
@@ -163,7 +186,7 @@ export const Dashboard = () => {
         
         // Notifications
         supabase.from('notifications').select('id, is_read, priority, created_at')
-          .gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString()),
+          .gte('created_at', new Date(startDate).toISOString()).lte('created_at', new Date(endDate).toISOString()),
         
         // Recent activities
         supabase.from('working_hours').select(`
@@ -448,120 +471,88 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600">Comprehensive business management overview</p>
-          </div>
+    <div className="space-y-4 md:space-y-6 p-2 md:p-0">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm md:text-base text-gray-600">Comprehensive business management overview</p>
         </div>
         
-        {/* Enhanced Date Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Date Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Quick Date Range */}
-              <div className="space-y-2">
-                <Label>Quick Date Range</Label>
-                <Select value={dateRange} onValueChange={(value) => { setDateRange(value); setUseCustomRange(false); }}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="current_week">Current Week</SelectItem>
-                    <SelectItem value="last_week">Last Week</SelectItem>
-                    <SelectItem value="current_month">Current Month</SelectItem>
-                    <SelectItem value="last_month">Last Month</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Month Selection */}
-              <div className="space-y-2">
-                <Label>Select Month (2024)</Label>
-                <Select value={dateRange} onValueChange={(value) => { setDateRange(value); setUseCustomRange(false); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="january">January</SelectItem>
-                    <SelectItem value="february">February</SelectItem>
-                    <SelectItem value="march">March</SelectItem>
-                    <SelectItem value="april">April</SelectItem>
-                    <SelectItem value="may">May</SelectItem>
-                    <SelectItem value="june">June</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Custom Date Range */}
-              <div className="space-y-2">
-                <Label>Custom Date Range</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    placeholder="Start Date"
-                  />
-                  <Input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    placeholder="End Date"
-                  />
-                  <Button onClick={handleCustomDateRange} size="sm">
-                    <CalendarRange className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Mobile-friendly Date Range Selector */}
+        <div className="flex flex-col space-y-3 md:flex-row md:items-center md:gap-4 md:space-y-0">
+          <Select value={dateShortcut} onValueChange={handleDateShortcut}>
+            <SelectTrigger className="w-full md:w-40">
+              <SelectValue placeholder="Date shortcut" />
+            </SelectTrigger>
+            <SelectContent>
+              {generateShortcutOptions().map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <div className="flex flex-col space-y-2 md:flex-row md:items-center md:gap-2 md:space-y-0">
+            <Calendar className="h-4 w-4 text-gray-500 hidden md:block" />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full md:w-40"
+              placeholder="Start Date"
+            />
+            <span className="text-gray-500 text-center md:text-left">to</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full md:w-40"
+              placeholder="End Date"
+            />
+          </div>
+        </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* Mobile-friendly Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
         {dashboardStats.map((stat) => {
           const Icon = stat.icon;
           return (
             <Card key={stat.title} className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
+                <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
                   {stat.title}
                 </CardTitle>
-                <Icon className={`h-5 w-5 ${stat.color}`} />
+                <Icon className={`h-4 w-4 md:h-5 md:w-5 ${stat.color}`} />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+                <div className={`text-lg md:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Mobile-friendly Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
               Hours Trend
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <LineChart data={hoursData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
+                <XAxis 
+                  dataKey="date" 
+                  fontSize={12}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis fontSize={12} />
                 <Tooltip />
                 <Legend />
                 <Line type="monotone" dataKey="hours" stroke="#8884d8" strokeWidth={2} />
@@ -572,17 +563,21 @@ export const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <DollarSign className="h-4 w-4 md:h-5 md:w-5" />
               Revenue Trend
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
+                <XAxis 
+                  dataKey="date" 
+                  fontSize={12}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis fontSize={12} />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="revenue" fill="#82ca9d" />
@@ -592,16 +587,16 @@ export const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Briefcase className="h-4 w-4 md:h-5 md:w-5" />
               Project Hours Distribution
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={projectData}
@@ -625,18 +620,18 @@ export const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="text-base md:text-lg">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4 max-h-64 overflow-y-auto">
               {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <span className="text-sm">{activity.description}</span>
-                    <div className="flex items-center gap-2">
+                <div key={index} className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs md:text-sm block">{activity.description}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
                       <span className="text-xs text-gray-500">{activity.time}</span>
-                      <span className={`text-xs px-2 py-1 rounded ${
+                      <span className={`text-xs px-2 py-1 rounded w-fit ${
                         activity.status === 'approved' ? 'bg-green-100 text-green-800' :
                         activity.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
@@ -648,7 +643,7 @@ export const Dashboard = () => {
                 </div>
               ))}
               {recentActivities.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+                <p className="text-xs md:text-sm text-gray-500 text-center py-4">No recent activity</p>
               )}
             </div>
           </CardContent>
@@ -656,21 +651,28 @@ export const Dashboard = () => {
       </div>
 
       {/* Additional Comprehensive Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Users className="h-4 w-4 md:h-5 md:w-5" />
               Employee Performance
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <ComposedChart data={employeeData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
+                <XAxis 
+                  dataKey="name" 
+                  fontSize={10}
+                  tick={{ fontSize: 8 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis yAxisId="left" fontSize={10} />
+                <YAxis yAxisId="right" orientation="right" fontSize={10} />
                 <Tooltip />
                 <Legend />
                 <Bar yAxisId="left" dataKey="hours" fill="#8884d8" name="Hours" />
@@ -682,18 +684,22 @@ export const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <BarChart3 className="h-4 w-4 md:h-5 md:w-5" />
               Monthly Comparison
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <ComposedChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
+                <XAxis 
+                  dataKey="month" 
+                  fontSize={12}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis yAxisId="left" fontSize={10} />
+                <YAxis yAxisId="right" orientation="right" fontSize={10} />
                 <Tooltip />
                 <Legend />
                 <Area yAxisId="left" type="monotone" dataKey="hours" fill="#8884d8" stroke="#8884d8" fillOpacity={0.6} name="Hours" />
@@ -704,16 +710,16 @@ export const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <DollarSign className="h-4 w-4 md:h-5 md:w-5" />
               Revenue by Category
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={clientData}
@@ -737,20 +743,20 @@ export const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <FileText className="h-4 w-4 md:h-5 md:w-5" />
               Payroll Summary Table
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-auto max-h-[300px]">
+            <div className="overflow-x-auto max-h-[250px]">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Gross Pay</TableHead>
-                    <TableHead>Net Pay</TableHead>
-                    <TableHead>Period</TableHead>
+                    <TableHead className="text-xs md:text-sm">Status</TableHead>
+                    <TableHead className="text-xs md:text-sm">Gross Pay</TableHead>
+                    <TableHead className="text-xs md:text-sm">Net Pay</TableHead>
+                    <TableHead className="text-xs md:text-sm">Period</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -765,15 +771,15 @@ export const Dashboard = () => {
                           {payroll.status}
                         </span>
                       </TableCell>
-                      <TableCell>${payroll.gross_pay?.toLocaleString()}</TableCell>
-                      <TableCell>${payroll.net_pay?.toLocaleString()}</TableCell>
-                      <TableCell>{payroll.pay_period_start} to {payroll.pay_period_end}</TableCell>
+                      <TableCell className="text-xs md:text-sm">${payroll.gross_pay?.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs md:text-sm">${payroll.net_pay?.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs md:text-sm">{payroll.pay_period_start} to {payroll.pay_period_end}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
               {payrollData.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">No payroll data available</p>
+                <p className="text-xs md:text-sm text-gray-500 text-center py-4">No payroll data available</p>
               )}
             </div>
           </CardContent>
@@ -783,35 +789,35 @@ export const Dashboard = () => {
       {/* Employee Performance Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Users className="h-4 w-4 md:h-5 md:w-5" />
             Detailed Employee Performance
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-auto">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Total Hours</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Average Hourly Rate</TableHead>
+                  <TableHead className="text-xs md:text-sm">Employee</TableHead>
+                  <TableHead className="text-xs md:text-sm">Total Hours</TableHead>
+                  <TableHead className="text-xs md:text-sm">Total Amount</TableHead>
+                  <TableHead className="text-xs md:text-sm">Average Hourly Rate</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {employeeData.map((employee: any, index) => (
                   <TableRow key={index}>
-                    <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell>{employee.hours.toFixed(1)}h</TableCell>
-                    <TableCell>${employee.amount.toLocaleString()}</TableCell>
-                    <TableCell>${employee.hours > 0 ? (employee.amount / employee.hours).toFixed(2) : '0.00'}/hr</TableCell>
+                    <TableCell className="font-medium text-xs md:text-sm">{employee.name}</TableCell>
+                    <TableCell className="text-xs md:text-sm">{employee.hours.toFixed(1)}h</TableCell>
+                    <TableCell className="text-xs md:text-sm">${employee.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-xs md:text-sm">${employee.hours > 0 ? (employee.amount / employee.hours).toFixed(2) : '0.00'}/hr</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
             {employeeData.length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">No employee data available for selected period</p>
+              <p className="text-xs md:text-sm text-gray-500 text-center py-4">No employee data available for selected period</p>
             )}
           </div>
         </CardContent>
