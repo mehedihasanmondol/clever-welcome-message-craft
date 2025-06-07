@@ -484,16 +484,9 @@ export const PayrollComponent = () => {
                                 <h3 className="font-medium text-gray-900 truncate">{profile.full_name}</h3>
                                 <p className="text-sm text-gray-600">{profile.role}</p>
                               </div>
-                              <PayrollQuickGenerate
-                                profiles={profiles}
-                                profilesWithHours={profilesWithHours}
-                                workingHours={workingHours}
-                                onRefresh={fetchPayrolls}
-                                preSelectedProfile={profile}
-                              />
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="grid grid-cols-2 gap-3 text-xs mb-3">
                               <div className="bg-gray-50 p-2 rounded">
                                 <span className="text-gray-600 block">Hours:</span>
                                 <div className="font-medium">{totalHours.toFixed(1)}h</div>
@@ -510,6 +503,16 @@ export const PayrollComponent = () => {
                                 <span className="text-gray-600 block">Estimated Pay:</span>
                                 <div className="font-medium text-green-600">${estimatedPay.toFixed(2)}</div>
                               </div>
+                            </div>
+                            
+                            <div className="flex justify-end">
+                              <PayrollQuickGenerate
+                                profiles={profiles}
+                                profilesWithHours={profilesWithHours}
+                                workingHours={workingHours}
+                                onRefresh={fetchPayrolls}
+                                preSelectedProfile={profile}
+                              />
                             </div>
                           </div>
 
