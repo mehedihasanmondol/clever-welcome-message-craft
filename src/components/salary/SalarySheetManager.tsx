@@ -811,50 +811,62 @@ export const SalarySheetManager = ({ payrolls: initialPayrolls, profiles, onRefr
                 </div>
               )}
 
-              {/* Bulk Actions */}
+              {/* Mobile-friendly Bulk Actions */}
               {selectedPayrolls.length > 0 && (
                 <div className="mb-4">
                   <Card>
                     <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
+                      <div className="space-y-3">
                         <div className="text-sm font-medium">
-                          {selectedPayrolls.length} payroll(s) selected
-                          {selectedApprovablePayrolls.length > 0 && (
-                            <span className="text-blue-600 ml-2">
-                              ({selectedApprovablePayrolls.length} approvable)
-                            </span>
-                          )}
-                          {selectedPayablePayrolls.length > 0 && (
-                            <span className="text-green-600 ml-2">
-                              ({selectedPayablePayrolls.length} payable - ${totalSelectedPayableAmount.toFixed(2)})
-                            </span>
-                          )}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span>{selectedPayrolls.length} payroll(s) selected</span>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {selectedApprovablePayrolls.length > 0 && (
+                                <span className="text-blue-600 px-2 py-1 bg-blue-50 rounded">
+                                  {selectedApprovablePayrolls.length} approvable
+                                </span>
+                              )}
+                              {selectedPayablePayrolls.length > 0 && (
+                                <span className="text-green-600 px-2 py-1 bg-green-50 rounded">
+                                  {selectedPayablePayrolls.length} payable - ${totalSelectedPayableAmount.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
+                        
+                        {/* Mobile-friendly button layout */}
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleBulkAction('approve')}
                             disabled={isBulkApproveDisabled}
+                            className="w-full sm:w-auto justify-center"
                           >
                             <Check className="h-4 w-4 mr-1" />
-                            Bulk Approve
+                            <span className="sm:hidden">Approve ({selectedApprovablePayrolls.length})</span>
+                            <span className="hidden sm:inline">Bulk Approve</span>
                           </Button>
                           <Button
                             size="sm"
                             onClick={() => handleBulkAction('pay')}
                             disabled={isBulkPaymentDisabled}
+                            className="w-full sm:w-auto justify-center"
                           >
                             <DollarSign className="h-4 w-4 mr-1" />
-                            Bulk Mark as Paid
+                            <span className="sm:hidden">Pay ({selectedPayablePayrolls.length})</span>
+                            <span className="hidden sm:inline">Bulk Mark as Paid</span>
                           </Button>
                         </div>
+                        
+                        {isBulkPaymentDisabled && selectedPayablePayrolls.length > 0 && bankBalance < totalSelectedPayableAmount && (
+                          <div className="text-xs text-red-500 p-2 bg-red-50 rounded border border-red-200">
+                            <div className="font-medium">Insufficient bank balance</div>
+                            <div>Need: ${totalSelectedPayableAmount.toFixed(2)} | Available: ${bankBalance.toFixed(2)}</div>
+                          </div>
+                        )}
                       </div>
-                      {isBulkPaymentDisabled && selectedPayablePayrolls.length > 0 && bankBalance < totalSelectedPayableAmount && (
-                        <div className="mt-2 text-xs text-red-500">
-                          Insufficient bank balance for selected payments
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 </div>
