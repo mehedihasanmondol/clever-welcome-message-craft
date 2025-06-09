@@ -19,6 +19,7 @@ import { RolePermissionsManager } from "@/components/RolePermissionsManager";
 import { UserMenu } from "@/components/UserMenu";
 import { RoleDashboardRouter } from "@/components/RoleDashboardRouter";
 import { RosterReport } from "@/components/RosterReport";
+import { FloatingNavigation } from "@/components/FloatingNavigation";
 import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
@@ -113,6 +114,13 @@ const Index = () => {
           {renderContent()}
         </div>
       </div>
+
+      {/* Floating Navigation for Mobile */}
+      <FloatingNavigation 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        hasPermission={hasPermission}
+      />
     </div>
   );
 };
