@@ -596,7 +596,7 @@ export const BankBalance = () => {
                 {isMobile ? "Deposit" : "Add Deposit"}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md mx-4">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingTransaction ? 'Edit Deposit' : 'Quick Deposit'}</DialogTitle>
               </DialogHeader>
@@ -611,6 +611,57 @@ export const BankBalance = () => {
                       {orphanBankAccounts.map((account) => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.bank_name} - {account.account_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="deposit_amount">Amount</Label>
+                  <Input
+                    id="deposit_amount"
+                    type="number"
+                    step="0.01"
+                    value={quickTransactionData.amount}
+                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, amount: parseFloat(e.target.value) || 0 })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="deposit_date">Date</Label>
+                  <Input
+                    id="deposit_date"
+                    type="date"
+                    value={quickTransactionData.date}
+                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, date: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="deposit_description">Description</Label>
+                  <Input
+                    id="deposit_description"
+                    value={quickTransactionData.description}
+                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, description: e.target.value })}
+                    placeholder="Enter description"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="deposit_category">Category (Optional)</Label>
+                  <Select value={quickTransactionData.category} onValueChange={(value) => setQuickTransactionData({ ...quickTransactionData, category: value as typeof quickTransactionData.category })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no-category">No Category</SelectItem>
+                      {categoryOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -660,48 +711,14 @@ export const BankBalance = () => {
                   showRoleFilter={true}
                 />
 
-                <div>
-                  <Label htmlFor="deposit_description">Description</Label>
-                  <Input
-                    id="deposit_description"
-                    value={quickTransactionData.description}
-                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, description: e.target.value })}
-                    required
-                  />
+                <div className="flex gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsDepositDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading} className="flex-1 bg-green-600 hover:bg-green-700">
+                    {loading ? "Adding..." : editingTransaction ? "Update Deposit" : "Add Deposit"}
+                  </Button>
                 </div>
-
-                <div>
-                  <Label htmlFor="deposit_amount">Amount</Label>
-                  <Input
-                    id="deposit_amount"
-                    type="number"
-                    step="0.01"
-                    value={quickTransactionData.amount}
-                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, amount: parseFloat(e.target.value) || 0 })}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="deposit_category">Category (Optional)</Label>
-                  <Select value={quickTransactionData.category} onValueChange={(value) => setQuickTransactionData({ ...quickTransactionData, category: value as typeof quickTransactionData.category })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no-category">No Category</SelectItem>
-                      {categoryOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-700">
-                  {loading ? "Adding..." : editingTransaction ? "Update Deposit" : "Add Deposit"}
-                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -713,7 +730,7 @@ export const BankBalance = () => {
                 {isMobile ? "Withdraw" : "Add Withdraw"}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md mx-4">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingTransaction ? 'Edit Withdrawal' : 'Quick Withdrawal'}</DialogTitle>
               </DialogHeader>
@@ -728,6 +745,57 @@ export const BankBalance = () => {
                       {orphanBankAccounts.map((account) => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.bank_name} - {account.account_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="withdraw_amount">Amount</Label>
+                  <Input
+                    id="withdraw_amount"
+                    type="number"
+                    step="0.01"
+                    value={quickTransactionData.amount}
+                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, amount: parseFloat(e.target.value) || 0 })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="withdraw_date">Date</Label>
+                  <Input
+                    id="withdraw_date"
+                    type="date"
+                    value={quickTransactionData.date}
+                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, date: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="withdraw_description">Description</Label>
+                  <Input
+                    id="withdraw_description"
+                    value={quickTransactionData.description}
+                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, description: e.target.value })}
+                    placeholder="Enter description"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="withdraw_category">Category (Optional)</Label>
+                  <Select value={quickTransactionData.category} onValueChange={(value) => setQuickTransactionData({ ...quickTransactionData, category: value as typeof quickTransactionData.category })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no-category">No Category</SelectItem>
+                      {categoryOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -777,48 +845,14 @@ export const BankBalance = () => {
                   showRoleFilter={true}
                 />
 
-                <div>
-                  <Label htmlFor="withdraw_description">Description</Label>
-                  <Input
-                    id="withdraw_description"
-                    value={quickTransactionData.description}
-                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, description: e.target.value })}
-                    required
-                  />
+                <div className="flex gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsWithdrawDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading} className="flex-1 bg-red-600 hover:bg-red-700">
+                    {loading ? "Adding..." : editingTransaction ? "Update Withdrawal" : "Add Withdrawal"}
+                  </Button>
                 </div>
-
-                <div>
-                  <Label htmlFor="withdraw_amount">Amount</Label>
-                  <Input
-                    id="withdraw_amount"
-                    type="number"
-                    step="0.01"
-                    value={quickTransactionData.amount}
-                    onChange={(e) => setQuickTransactionData({ ...quickTransactionData, amount: parseFloat(e.target.value) || 0 })}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="withdraw_category">Category (Optional)</Label>
-                  <Select value={quickTransactionData.category} onValueChange={(value) => setQuickTransactionData({ ...quickTransactionData, category: value as typeof quickTransactionData.category })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no-category">No Category</SelectItem>
-                      {categoryOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-700">
-                  {loading ? "Adding..." : editingTransaction ? "Update Withdrawal" : "Add Withdrawal"}
-                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -830,77 +864,90 @@ export const BankBalance = () => {
                 {isMobile ? "Bank" : "Add Bank"}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md mx-4">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingBankAccount ? 'Edit Bank Account' : 'Add Bank Account'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleBankSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="bank_name">Bank Name</Label>
-                  <Input
-                    id="bank_name"
-                    value={bankFormData.bank_name}
-                    onChange={(e) => setBankFormData({ ...bankFormData, bank_name: e.target.value })}
-                    required
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="bank_name">Bank Name *</Label>
+                    <Input
+                      id="bank_name"
+                      value={bankFormData.bank_name}
+                      onChange={(e) => setBankFormData({ ...bankFormData, bank_name: e.target.value })}
+                      placeholder="Enter bank name"
+                      required
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="account_holder_name">Account Holder Name</Label>
-                  <Input
-                    id="account_holder_name"
-                    value={bankFormData.account_holder_name}
-                    onChange={(e) => setBankFormData({ ...bankFormData, account_holder_name: e.target.value })}
-                    required
-                  />
-                </div>
+                  <div>
+                    <Label htmlFor="account_holder_name">Account Holder Name *</Label>
+                    <Input
+                      id="account_holder_name"
+                      value={bankFormData.account_holder_name}
+                      onChange={(e) => setBankFormData({ ...bankFormData, account_holder_name: e.target.value })}
+                      placeholder="Enter account holder name"
+                      required
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="account_number">Account Number</Label>
-                  <Input
-                    id="account_number"
-                    value={bankFormData.account_number}
-                    onChange={(e) => setBankFormData({ ...bankFormData, account_number: e.target.value })}
-                    required
-                  />
-                </div>
+                  <div>
+                    <Label htmlFor="account_number">Account Number *</Label>
+                    <Input
+                      id="account_number"
+                      value={bankFormData.account_number}
+                      onChange={(e) => setBankFormData({ ...bankFormData, account_number: e.target.value })}
+                      placeholder="Enter account number"
+                      required
+                    />
+                  </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="bsb_code">BSB Code</Label>
                     <Input
                       id="bsb_code"
                       value={bankFormData.bsb_code}
                       onChange={(e) => setBankFormData({ ...bankFormData, bsb_code: e.target.value })}
+                      placeholder="Enter BSB code"
                     />
                   </div>
+
                   <div>
                     <Label htmlFor="swift_code">SWIFT Code</Label>
                     <Input
                       id="swift_code"
                       value={bankFormData.swift_code}
                       onChange={(e) => setBankFormData({ ...bankFormData, swift_code: e.target.value })}
+                      placeholder="Enter SWIFT code"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="opening_balance">Opening Balance</Label>
+                    <Input
+                      id="opening_balance"
+                      type="number"
+                      step="0.01"
+                      value={bankFormData.opening_balance}
+                      onChange={(e) => setBankFormData({ ...bankFormData, opening_balance: parseFloat(e.target.value) || 0 })}
+                      placeholder="0.00"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="opening_balance">Opening Balance</Label>
-                  <Input
-                    id="opening_balance"
-                    type="number"
-                    step="0.01"
-                    value={bankFormData.opening_balance}
-                    onChange={(e) => setBankFormData({ ...bankFormData, opening_balance: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    This will create a deposit transaction with "Opening Balance" category
-                  </p>
-                </div>
+                <p className="text-xs text-gray-500">
+                  * Required fields. Opening balance will create a deposit transaction with "Opening Balance" category
+                </p>
 
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "Saving..." : editingBankAccount ? "Update Bank Account" : "Add Bank Account"}
-                </Button>
+                <div className="flex gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsBankDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading} className="flex-1">
+                    {loading ? "Saving..." : editingBankAccount ? "Update Bank Account" : "Add Bank Account"}
+                  </Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
