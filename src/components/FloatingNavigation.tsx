@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { 
   LayoutDashboard, 
   Users, 
@@ -15,8 +20,7 @@ import {
   Shield,
   User,
   Calculator,
-  Menu,
-  X
+  ChevronLeft
 } from "lucide-react";
 
 interface FloatingNavigationProps {
@@ -120,53 +124,62 @@ export const FloatingNavigation = ({ activeTab, onTabChange, hasPermission }: Fl
 
   return (
     <div className="md:hidden">
-      {/* Overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Navigation Grid */}
-      {isOpen && (
-        <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 p-4 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-3 gap-3">
-            {visibleMenuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-lg transition-colors text-xs",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                  )}
-                >
-                  <Icon className="h-6 w-6 mb-1" />
-                  <span className="text-center leading-tight">{item.label}</span>
-                </button>
-              );
-            })}
+      <Drawer open={isOpen} onOpenChange={setIsOpen} direction="right">
+        {/* Trigger Tab - Always visible on right edge */}
+        <DrawerTrigger asChild>
+          <div className="fixed right-0 top-1/2 -translate-y-1/2 z-30">
+            <Button
+              variant="default"
+              className="h-16 w-8 rounded-l-lg rounded-r-none shadow-lg flex items-center justify-center"
+              onClick={() => setIsOpen(true)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-      )}
+        </DrawerTrigger>
 
-      {/* Floating Action Button */}
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-30 transition-all duration-300",
-          isOpen && "rotate-45"
-        )}
-        size="icon"
-      >
-        {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-      </Button>
+        {/* Drawer Content */}
+        <DrawerContent className="h-full w-80 fixed right-0 top-0 rounded-none border-l">
+          <div className="flex flex-col h-full p-4">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold">Navigation</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="h-8 w-8"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                {visibleMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleTabChange(item.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-lg transition-colors text-xs min-h-[80px]",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      )}
+                    >
+                      <Icon className="h-6 w-6 mb-2" />
+                      <span className="text-center leading-tight">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };
